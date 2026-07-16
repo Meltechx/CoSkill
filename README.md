@@ -6,7 +6,7 @@ AI-powered work performance tracking and talent discovery platform.
 
 - **Backend**: FastAPI (Python) + Supabase
 - **Frontend**: Next.js 14 + Tailwind CSS
-- **AI**: Anthropic Claude API
+- **AI**: OpenAI API
 
 ## Project Structure
 
@@ -35,54 +35,35 @@ CoSkill/
 
 ```bash
 cd backend
-
-# Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
-
-# Install dependencies
+source venv/bin/activate
 pip install -r requirements.txt
-
-# Configure environment
 cp .env.example .env
-# Fill in your Supabase and Anthropic keys in .env
-
-# Run the dev server
+# Fill in your Supabase and OpenAI keys in .env
 uvicorn main:app --reload
 ```
 
-API will be available at `http://localhost:8000`.
-Interactive docs at `http://localhost:8000/docs`.
+API docs at `http://localhost:8000/docs`.
 
 ### Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Configure environment
-cp ../.env.example .env.local
-# Set NEXT_PUBLIC_API_URL=http://localhost:8000
-
-# Run the dev server
 npm run dev
 ```
 
-App will be available at `http://localhost:3000`.
+App at `http://localhost:3000`.
 
 ## Environment Variables
-
-See `backend/.env.example` for required variables:
 
 | Variable | Description |
 |---|---|
 | `SUPABASE_URL` | Your Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (backend only) |
-| `JWT_SECRET` | Secret for signing JWTs |
-| `ANTHROPIC_API_KEY` | Anthropic API key for AI insights |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `SECRET_KEY` | Secret for signing JWTs |
 
 ## API Endpoints
 
@@ -93,9 +74,10 @@ See `backend/.env.example` for required variables:
 | GET | `/api/auth/me` | Get current user |
 | GET | `/api/projects/` | List projects |
 | POST | `/api/projects/` | Create project |
-| GET | `/api/tasks/` | List tasks |
-| POST | `/api/tasks/` | Create task |
+| GET | `/api/projects/{id}/tasks` | List tasks for project |
 | POST | `/api/tasks/{id}/complete` | Complete a task |
+| PATCH | `/api/tasks/{id}/status` | Update task status |
 | GET | `/api/performance/summary` | Performance summary |
 | GET | `/api/performance/leaderboard` | Team leaderboard |
 | GET | `/api/performance/insights` | AI-generated insights |
+| POST | `/api/projects/{id}/decompose` | AI task decomposition |
