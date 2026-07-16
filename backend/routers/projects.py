@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, status
 
-from dependencies import get_current_user, get_project_service, get_task_service
+from dependencies import get_ai_service, get_current_user, get_project_service, get_task_service
 from models.project import ProjectCreate, ProjectOut
 from models.task import TaskOut
+from services.ai_service import AIService
 from services.project_service import ProjectService
 from services.task_service import TaskService
 
@@ -51,3 +52,20 @@ async def list_project_tasks(
     task_service: TaskService = Depends(get_task_service),
 ):
     return await task_service.list_tasks(project_id, str(current_user.id))
+
+
+@router.post("/{project_id}/decompose", response_model=list[TaskOut], status_code=status.HTTP_201_CREATED)
+async def decompose_project(
+    project_id: str,
+    current_user=Depends(get_current_user),
+    project_service: ProjectService = Depends(get_project_service),
+    task_service: TaskService = Depends(get_task_service),
+    ai_service: AIService = Depends(get_ai_service),
+):
+    project = await project_service.get_project(project_id, str(current_user.id))
+
+    title = project["title"]
+    goal = project.get("goal") or project.get("description") or title
+
+    ai_tasks = await ai_service.decompose_project(title, goal)
+    return await task_service.bulk_create_tasks(project_id, ai_tasks)

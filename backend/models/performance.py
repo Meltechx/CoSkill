@@ -3,27 +3,46 @@ from typing import Optional
 from datetime import datetime
 
 
-class PerformanceMetrics(BaseModel):
-    user_id: str
-    tasks_completed: int
-    tasks_on_time: int
-    avg_completion_time_hours: float
-    performance_score: float
-    period_start: datetime
-    period_end: datetime
+class SkillScore(BaseModel):
+    skill: str
+    score: float
+    tasks_count: int
 
 
-class LeaderboardEntry(BaseModel):
-    rank: int
-    user_id: str
-    full_name: str
-    performance_score: float
-    tasks_completed: int
+class RecentCompletion(BaseModel):
+    task_id: str
+    task_title: str
+    project_title: str
+    completed_at: datetime
+    score: Optional[float] = None
+    difficulty: str
+    skill_tags: list[str]
 
 
-class AIInsight(BaseModel):
-    user_id: str
-    summary: str
+class PerformanceSummaryOut(BaseModel):
+    overall_score: float
+    total_projects: int
+    total_tasks: int
+    completed_tasks: int
+    avg_task_score: float
+    skill_scores: list[SkillScore]
+    recent_completions: list[RecentCompletion]
+
+
+class ScoreRequest(BaseModel):
+    task_id: str
+
+
+class ScoreOut(BaseModel):
+    task_id: str
+    score: float
+    completion_time_score: float
+    difficulty_multiplier: float
+    consistency_score: float
+
+
+class InsightsOut(BaseModel):
     strengths: list[str]
-    areas_for_improvement: list[str]
-    generated_at: datetime
+    improvements: list[str]
+    next_skill: str
+    summary: str

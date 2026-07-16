@@ -76,6 +76,27 @@ class TaskService:
             )
         return response.data[0]
 
+    async def bulk_create_tasks(self, project_id: str, tasks: list[dict]) -> list[dict]:
+        payload = [
+            {
+                "project_id": project_id,
+                "title": t["title"],
+                "description": t.get("description"),
+                "difficulty": t.get("difficulty", "medium"),
+                "estimated_hours": t.get("estimated_hours"),
+                "skill_tags": t.get("skill_tags", []),
+                "status": "todo",
+            }
+            for t in tasks
+        ]
+        response = self.client.table("tasks").insert(payload).execute()
+        if not response.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save tasks to database.",
+            )
+        return response.data
+
     async def update_status(self, task_id: str, new_status: str, user_id: str) -> dict:
         await self._get_task_with_ownership(task_id, user_id)
 
