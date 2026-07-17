@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 
+from models.performance import SkillScore
+
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -24,3 +26,13 @@ class UserOut(UserBase):
 
     class Config:
         from_attributes = True
+
+
+class PublicProfileOut(BaseModel):
+    """The intentionally limited data exposed on a shareable profile."""
+
+    full_name: str
+    skill_profiles: list[SkillScore]
+    overall_score: float
+    total_tasks: int
+    completed_tasks: int

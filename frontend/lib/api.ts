@@ -143,3 +143,16 @@ export const performance = {
   summary: (token: string) =>
     api<PerformanceSummary>("/api/performance/summary", { token }),
 };
+
+export interface PublicProfile {
+  full_name: string;
+  skill_profiles: SkillScore[];
+  overall_score: number;
+  total_tasks: number;
+  completed_tasks: number;
+}
+
+export const users = {
+  publicProfile: (id: string) =>
+    api<PublicProfile>(`/api/users/${encodeURIComponent(id)}/profile`),
+};

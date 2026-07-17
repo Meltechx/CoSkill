@@ -1,36 +1,13 @@
-"""
-Performance service.
-
-Requires a `performance_scores` table in Supabase with the following schema:
-
-    CREATE TABLE performance_scores (
-        id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id         uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-        task_id         uuid NOT NULL UNIQUE REFERENCES tasks(id) ON DELETE CASCADE,
-        score           float NOT NULL,
-        completion_time_score  float NOT NULL,
-        difficulty_multiplier  float NOT NULL,
-        consistency_score      float NOT NULL,
-        created_at      timestamptz DEFAULT now()
-    );
-
-    -- RLS
-    ALTER TABLE performance_scores ENABLE ROW LEVEL SECURITY;
-    CREATE POLICY "users_own_scores" ON performance_scores
-        USING (user_id = auth.uid());
-"""
-
-from datetime import datetime, timezone
 from fastapi import HTTPException, status
 from supabase import Client
 
 from services.ai_service import AIService
 
-DIFFICULTY_MULTIPLIERS = {
-    "easy": 0.7,
-    "medium": 1.0,
-    "hard": 1.3,
-    "expert": 1.5,
+DIFFICULTY_SCORES = {
+    "easy": 70.0,
+    "medium": 80.0,
+    "hard": 90.0,
+    "expert": 100.0,
 }
 
 
@@ -42,63 +19,43 @@ class PerformanceService:
 
     def _calculate_score(self, task: dict) -> dict:
         """
-        Compute score components and return a dict ready for DB insert.
-
-        completion_time_score (0-100):
-            100 if actual <= estimated, drops linearly; 0 at 2× estimated.
-        difficulty_multiplier:
-            easy=0.7, medium=1.0, hard=1.3, expert=1.5
-        consistency_score (0 or 100):
-            100 if task completed before the project deadline, else 60.
-            Defaults to 100 when no deadline is set.
-        final score = min(100, (time*0.7 + consistency*0.3) * multiplier)
+        completion_time_score:
+            100 if actual_hours <= estimated_hours,
+            else (estimated / actual) * 100, clamped to [0, 100].
+        difficulty_score:
+            easy=70, medium=80, hard=90, expert=100.
+        score:
+            average of the two components.
+        consistency_score stored as 100 (not used in formula; kept for schema).
         """
-        # -- Component 1: completion time --------------------------------
         estimated = task.get("estimated_hours")
         actual = task.get("actual_hours")
-        if estimated and actual and estimated > 0:
-            ratio = actual / estimated
-            time_score = 100.0 if ratio <= 1.0 else max(0.0, 100.0 - (ratio - 1.0) * 100.0)
+
+        if estimated and actual and float(estimated) > 0 and float(actual) > 0:
+            if float(actual) <= float(estimated):
+                time_score = 100.0
+            else:
+                time_score = round(min(100.0, (float(estimated) / float(actual)) * 100), 1)
         else:
-            time_score = 70.0  # neutral default when hours aren't tracked
+            time_score = 80.0  # neutral default when hours aren't tracked
 
-        # -- Component 2: difficulty multiplier --------------------------
-        multiplier = DIFFICULTY_MULTIPLIERS.get(task.get("difficulty", "medium"), 1.0)
-
-        # -- Component 3: consistency (deadline) -------------------------
-        project = task.get("projects") or {}
-        deadline_str = project.get("deadline") if isinstance(project, dict) else None
-        completed_at_str = task.get("completed_at")
-
-        if deadline_str and completed_at_str:
-            try:
-                deadline_dt = datetime.fromisoformat(deadline_str.replace("Z", "+00:00"))
-                completed_dt = datetime.fromisoformat(completed_at_str.replace("Z", "+00:00"))
-                consistency_score = 100.0 if completed_dt <= deadline_dt else 60.0
-            except ValueError:
-                consistency_score = 100.0
-        else:
-            consistency_score = 100.0
-
-        # -- Final score -------------------------------------------------
-        base = time_score * 0.7 + consistency_score * 0.3
-        final_score = round(min(100.0, base * multiplier), 1)
+        difficulty_score = DIFFICULTY_SCORES.get(task.get("difficulty", "medium"), 80.0)
+        score = round((time_score + difficulty_score) / 2, 1)
 
         return {
-            "score": final_score,
-            "completion_time_score": round(time_score, 1),
-            "difficulty_multiplier": multiplier,
-            "consistency_score": round(consistency_score, 1),
+            "score": score,
+            "completion_time_score": time_score,
+            "difficulty_score": difficulty_score,
+            "consistency_score": 100.0,  # schema requires it; not part of formula
         }
 
     # ── score_task ─────────────────────────────────────────────────────
 
     async def score_task(self, task_id: str, user_id: str) -> dict:
         """Calculate and persist a performance score for a completed task."""
-        # Fetch task + project via join (RLS ensures ownership via project.user_id)
         resp = (
             self.client.table("tasks")
-            .select("*, projects!inner(user_id, title, deadline)")
+            .select("id, difficulty, estimated_hours, actual_hours, status, projects!inner(user_id)")
             .eq("id", task_id)
             .single()
             .execute()
@@ -118,23 +75,12 @@ class PerformanceService:
         components = self._calculate_score(task)
         payload = {"user_id": user_id, "task_id": task_id, **components}
 
-        # Upsert: update if already scored, insert otherwise
-        existing = (
+        # Upsert on (user_id, task_id) — DB trigger updates skill_profiles on insert
+        result = (
             self.client.table("performance_scores")
-            .select("id")
-            .eq("task_id", task_id)
+            .upsert(payload, on_conflict="user_id,task_id")
             .execute()
         )
-        if existing.data:
-            result = (
-                self.client.table("performance_scores")
-                .update(components)
-                .eq("task_id", task_id)
-                .execute()
-            )
-        else:
-            result = self.client.table("performance_scores").insert(payload).execute()
-
         if not result.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -144,34 +90,30 @@ class PerformanceService:
         row = result.data[0]
         return {
             "task_id": task_id,
-            "score": row["score"],
-            "completion_time_score": row["completion_time_score"],
-            "difficulty_multiplier": row["difficulty_multiplier"],
-            "consistency_score": row["consistency_score"],
+            "score": float(row["score"]),
+            "completion_time_score": float(row["completion_time_score"]),
+            "difficulty_score": float(row["difficulty_score"]),
         }
 
     # ── get_summary ────────────────────────────────────────────────────
 
     async def get_summary(self, user_id: str) -> dict:
         """
-        Aggregate performance data for the dashboard profile page.
-        Returns counts, overall score, per-skill breakdown, and recent completions.
+        Return performance summary.
+        - task counts from `tasks` table (RLS filters to user's projects)
+        - avg_score from `performance_scores`
+        - skill_profiles from `skill_profiles` (maintained by DB trigger)
+        - recent_completions from completed tasks joined with project title
         """
-        # 1. All projects for this user
+        # 1. Project count (RLS restricts to current user automatically)
         proj_resp = self.client.table("projects").select("id").execute()
-        project_rows = proj_resp.data or []
-        total_projects = len(project_rows)
-        project_ids = [p["id"] for p in project_rows]
+        total_projects = len(proj_resp.data or [])
 
-        if not project_ids:
-            return self._empty_summary()
-
-        # 2. All tasks across those projects (with joined project title/deadline)
+        # 2. All tasks via RLS (tasks are accessible through project ownership)
         tasks_resp = (
             self.client.table("tasks")
-            .select("id, title, status, difficulty, skill_tags, estimated_hours, actual_hours, completed_at, projects(title, deadline)")
-            .in_("project_id", project_ids)
-            .order("completed_at", desc=True)
+            .select("id, title, status, difficulty, skill_tags, completed_at, projects(title)")
+            .order("completed_at", desc=True, nullsfirst=False)
             .execute()
         )
         all_tasks = tasks_resp.data or []
@@ -179,53 +121,35 @@ class PerformanceService:
         completed_tasks = [t for t in all_tasks if t["status"] == "completed"]
         completed_count = len(completed_tasks)
 
-        # 3. Performance scores for completed tasks
-        completed_ids = [t["id"] for t in completed_tasks]
-        score_map: dict[str, float] = {}
-        if completed_ids:
-            scores_resp = (
-                self.client.table("performance_scores")
-                .select("task_id, score")
-                .in_("task_id", completed_ids)
-                .execute()
-            )
-            score_map = {s["task_id"]: s["score"] for s in (scores_resp.data or [])}
-
-        # 4. Overall score = avg of all scored tasks
-        scored_values = list(score_map.values())
-        overall_score = round(sum(scored_values) / len(scored_values), 1) if scored_values else 0.0
-        avg_task_score = overall_score
-
-        # 5. Skill breakdown: aggregate score per unique skill tag
-        skill_totals: dict[str, list[float]] = {}
-        for task in completed_tasks:
-            task_score = score_map.get(task["id"])
-            if task_score is None:
-                continue
-            for tag in task.get("skill_tags") or []:
-                if tag:
-                    skill_totals.setdefault(tag, []).append(task_score)
-
-        skill_scores = sorted(
-            [
-                {
-                    "skill": tag,
-                    "score": round(sum(vals) / len(vals), 1),
-                    "tasks_count": len(vals),
-                }
-                for tag, vals in skill_totals.items()
-            ],
-            key=lambda x: x["score"],
-            reverse=True,
+        # 3. Avg score from performance_scores (RLS filters to user's rows)
+        scores_resp = (
+            self.client.table("performance_scores")
+            .select("task_id, score")
+            .execute()
         )
+        score_rows = scores_resp.data or []
+        score_map = {s["task_id"]: float(s["score"]) for s in score_rows}
+        all_scores = list(score_map.values())
+        avg_score = round(sum(all_scores) / len(all_scores), 1) if all_scores else 0.0
 
-        # 6. Recent completions (up to 10, sorted newest first)
-        recent_raw = sorted(
-            [t for t in completed_tasks if t.get("completed_at")],
-            key=lambda t: t["completed_at"],
-            reverse=True,
-        )[:10]
+        # 4. Skill profiles from the dedicated table (kept current by DB trigger)
+        skills_resp = (
+            self.client.table("skill_profiles")
+            .select("skill_name, total_tasks, avg_score")
+            .order("avg_score", desc=True)
+            .execute()
+        )
+        skill_profiles = [
+            {
+                "skill": row["skill_name"],
+                "score": float(row["avg_score"]) if row["avg_score"] is not None else 0.0,
+                "tasks_count": row["total_tasks"],
+            }
+            for row in (skills_resp.data or [])
+        ]
 
+        # 5. Recent completions (last 10, with project title and score)
+        recent_raw = [t for t in completed_tasks if t.get("completed_at")][:10]
         recent_completions = [
             {
                 "task_id": t["id"],
@@ -244,19 +168,18 @@ class PerformanceService:
         ]
 
         return {
-            "overall_score": overall_score,
+            "overall_score": avg_score,
             "total_projects": total_projects,
             "total_tasks": total_tasks,
             "completed_tasks": completed_count,
-            "avg_task_score": avg_task_score,
-            "skill_scores": skill_scores,
+            "avg_task_score": avg_score,
+            "skill_scores": skill_profiles,
             "recent_completions": recent_completions,
         }
 
     # ── get_insights ───────────────────────────────────────────────────
 
     async def get_insights(self, user_id: str, ai_service: AIService) -> dict:
-        """Fetch skill data then ask GPT to analyze strengths and gaps."""
         summary = await self.get_summary(user_id)
         return await ai_service.generate_insights(
             skill_scores=summary["skill_scores"],

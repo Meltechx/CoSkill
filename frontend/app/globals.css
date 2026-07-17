@@ -109,6 +109,19 @@ input:-webkit-autofill:focus {
   transform: translateY(-2px);
 }
 
+.public-profile-card {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 600px) {
+  .public-profile-summary {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .step-connector {
   background: linear-gradient(90deg, rgba(168, 85, 247, 0.4), rgba(59, 130, 246, 0.4));
   height: 1px;

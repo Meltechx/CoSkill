@@ -37,8 +37,7 @@ class ScoreOut(BaseModel):
     task_id: str
     score: float
     completion_time_score: float
-    difficulty_multiplier: float
-    consistency_score: float
+    difficulty_score: float
 
 
 class InsightsOut(BaseModel):
