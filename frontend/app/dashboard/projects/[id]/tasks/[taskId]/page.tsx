@@ -163,6 +163,8 @@ export default function TaskDetailPage() {
   const handleComplete = useCallback(async () => {
     if (!token || !task || completing) return;
 
+    console.log('[Complete] uploadedFiles:', uploadedFiles, 'length:', uploadedFiles.length, 'first item type:', typeof uploadedFiles[0], uploadedFiles[0] instanceof File);
+
     if (uploadedFiles.length === 0) {
       setError("Please upload proof of your work");
       return;
@@ -183,7 +185,7 @@ export default function TaskDetailPage() {
     } finally {
       setCompleting(false);
     }
-  }, [token, task, completing]);
+  }, [token, task, completing, uploadedFiles]);
 
   const handleVerify = useCallback(async () => {
     if (!token || !task || !verificationAnswer.trim() || verifying) return;
