@@ -1,9 +1,10 @@
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from dependencies import get_current_user, get_task_service, get_performance_service
-from models.task import TaskOut, TaskStatusUpdate
+from dependencies import get_ai_service, get_current_user, get_task_service, get_performance_service
+from models.task import TaskOut, TaskStatusUpdate, TaskVerificationRequest
+from services.ai_service import AIService
 from services.task_service import TaskService
 from services.performance_service import PerformanceService
 
@@ -24,7 +25,45 @@ async def complete_task(
     except Exception as e:
         # Scoring is non-critical — log and continue so task completion always succeeds
         logger.warning("Performance scoring failed for task %s: %s", task_id, e)
+    if task["is_flagged"]:
+        question = await AIService().generate_verification_question(task["title"], task.get("description"))
+        task = await task_service.set_verification_question(task_id, question)
     return task
+
+
+@router.post("/{task_id}/start", response_model=TaskOut)
+async def start_task(
+    task_id: str,
+    current_user=Depends(get_current_user),
+    task_service: TaskService = Depends(get_task_service),
+):
+    return await task_service.start_task(task_id, str(current_user.id))
+
+
+@router.post("/{task_id}/verify", response_model=TaskOut)
+async def verify_task(
+    task_id: str,
+    body: TaskVerificationRequest,
+    current_user=Depends(get_current_user),
+    task_service: TaskService = Depends(get_task_service),
+    perf_service: PerformanceService = Depends(get_performance_service),
+    ai_service: AIService = Depends(get_ai_service),
+):
+    answer = body.verification_answer.strip()
+    if not answer:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Verification answer is required.")
+
+    task = await task_service._get_task_with_ownership(task_id, str(current_user.id))
+    if not task.get("is_flagged"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This task is not under review.")
+    question = task.get("verification_question") or "Explain how you completed this task."
+    verification_score = await ai_service.evaluate_verification_answer(
+        task["title"], task.get("description"), question, answer
+    )
+    passed = verification_score >= 5
+    if not passed:
+        await perf_service.apply_verification_penalty(task_id, str(current_user.id))
+    return await task_service.record_verification(task_id, str(current_user.id), answer, passed)
 
 
 @router.patch("/{task_id}/status", response_model=TaskOut)

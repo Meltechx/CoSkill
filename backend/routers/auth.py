@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from dependencies import get_auth_service, get_current_user
-from models.auth import AuthResponse, LoginRequest, RegisterRequest, SessionOut, UserOut
+from models.auth import AuthResponse, LoginRequest, RegisterRequest, SessionOut, UserOut, ProfileUpdateRequest, OAuthUrlOut
 from services.auth_service import AuthService
 
 router = APIRouter()
@@ -14,6 +14,7 @@ def _build_user_out(user) -> UserOut:
         id=str(user.id),
         email=user.email,
         full_name=(user.user_metadata or {}).get("full_name"),
+        avatar_url=(user.user_metadata or {}).get("avatar_url"),
     )
 
 
@@ -59,3 +60,24 @@ async def logout(
 @router.get("/me", response_model=UserOut)
 async def me(current_user=Depends(get_current_user)):
     return _build_user_out(current_user)
+
+
+@router.get("/google", response_model=OAuthUrlOut)
+async def google_oauth(auth_service: AuthService = Depends(get_auth_service)):
+    return {"url": await auth_service.google_oauth_url()}
+
+
+@router.put("/me", response_model=UserOut)
+async def update_me(body: ProfileUpdateRequest, current_user=Depends(get_current_user), auth_service: AuthService = Depends(get_auth_service)):
+    update = await auth_service.update_profile(str(current_user.id), body.full_name)
+    user = _build_user_out(current_user)
+    user.full_name = update["full_name"]
+    return user
+
+
+@router.post("/me/avatar", response_model=UserOut)
+async def upload_avatar(file: UploadFile = File(...), current_user=Depends(get_current_user), auth_service: AuthService = Depends(get_auth_service)):
+    avatar_url = await auth_service.upload_avatar(str(current_user.id), file.filename or "avatar.jpg", await file.read(), file.content_type)
+    user = _build_user_out(current_user)
+    user.avatar_url = avatar_url
+    return user

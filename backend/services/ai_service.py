@@ -27,6 +27,18 @@ INSIGHTS_SYSTEM_PROMPT = (
     "Be specific to the skill data provided. Return only valid JSON, no extra text."
 )
 
+VERIFICATION_QUESTION_SYSTEM_PROMPT = (
+    "You verify whether someone genuinely completed a software task. "
+    "Write one concise, task-specific question that requires the person to explain "
+    "a concrete implementation decision, result, or trade-off. Return JSON only: {\"question\": \"...\"}."
+)
+
+VERIFICATION_EVALUATION_SYSTEM_PROMPT = (
+    "You assess whether a user's answer credibly demonstrates they completed a task. "
+    "Score it from 1 to 10. Score 1-4 for vague, irrelevant, or implausible answers; "
+    "score 5-10 for specific, relevant explanations. Return JSON only: {\"score\": integer}."
+)
+
 
 class AIService:
     def __init__(self):
@@ -126,6 +138,64 @@ class AIService:
             "next_skill": data.get("next_skill") or "",
             "summary": data.get("summary") or "",
         }
+
+    async def generate_verification_question(self, title: str, description: str | None) -> str:
+        response = await self._json_completion(
+            VERIFICATION_QUESTION_SYSTEM_PROMPT,
+            f"Task title: {title}\nTask description: {description or 'No description provided.'}",
+        )
+        question = response.get("question")
+        if not isinstance(question, str) or not question.strip():
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="OpenAI returned an invalid verification question.",
+            )
+        return question.strip()
+
+    async def evaluate_verification_answer(
+        self,
+        title: str,
+        description: str | None,
+        question: str,
+        answer: str,
+    ) -> int:
+        response = await self._json_completion(
+            VERIFICATION_EVALUATION_SYSTEM_PROMPT,
+            f"Task title: {title}\nTask description: {description or 'No description provided.'}\n"
+            f"Verification question: {question}\nUser answer: {answer}",
+        )
+        try:
+            return max(1, min(10, int(response.get("score"))))
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="OpenAI returned an invalid verification score.",
+            )
+
+    async def _json_completion(self, system_prompt: str, user_message: str) -> dict:
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-5.6",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.2,
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"OpenAI API error: {str(e)}",
+            )
+
+        try:
+            return json.loads(response.choices[0].message.content or "{}")
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="OpenAI returned malformed JSON.",
+            )
 
     def _validate_task(self, task: dict, index: int) -> dict:
         if not isinstance(task.get("title"), str) or not task["title"].strip():

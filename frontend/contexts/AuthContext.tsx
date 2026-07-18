@@ -7,6 +7,7 @@ interface User {
   id: string;
   email: string;
   full_name: string | null;
+  avatar_url?: string | null;
 }
 
 interface AuthContextType {
@@ -16,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, full_name: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -70,8 +72,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("token");
   };
 
+  const updateUser = (nextUser: User) => setUser(nextUser);
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

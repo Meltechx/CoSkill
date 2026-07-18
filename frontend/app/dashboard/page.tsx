@@ -13,6 +13,7 @@ export default function DashboardPage() {
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
 
   useEffect(() => {
     if (!token) return;
@@ -33,10 +34,15 @@ export default function DashboardPage() {
     fetchData();
   }, [token]);
 
-  const handleCreateProject = async (data: { title: string; goal: string }) => {
+  const handleCreateProject = async (data: { title: string; goal: string; deadline?: string }) => {
     if (!token) return;
     const newProject = await projectsApi.create(data, token);
     setProjects((prev) => [newProject, ...prev]);
+  };
+
+  const handleProjectDeleted = (projectId: string) => {
+    setProjects((prev) => prev.filter((project) => project.id !== projectId));
+    setAllTasks((prev) => prev.filter((task) => task.project_id !== projectId));
   };
 
   const completedTasks = allTasks.filter((t) => t.status === "completed").length;
@@ -44,6 +50,7 @@ export default function DashboardPage() {
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const completionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
   const firstName = user?.full_name?.split(" ")[0] || "there";
+  const visibleProjects = filter === "all" ? projects : projects.filter((project) => project.status === filter);
 
   /* ── Loading skeleton ─────────────────────────────────────── */
   if (loading) {
@@ -67,6 +74,7 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
     );
   }
 
@@ -115,6 +123,11 @@ export default function DashboardPage() {
           </svg>
           New project
         </button>
+      </div>
+
+      <div style={{ marginBottom: "22px", padding: "18px 20px", borderRadius: "15px", background: "linear-gradient(110deg, rgba(168,85,247,.16), rgba(59,130,246,.08))", border: "1px solid rgba(168,85,247,.2)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "16px" }}>
+        <div><p style={{ margin: 0, color: "#d8b4fe", fontWeight: 700, fontSize: "13px" }}>Welcome back, {firstName}.</p><p style={{ margin: "5px 0 0", color: "rgba(255,255,255,.5)", fontSize: "13px" }}>{completedTasks} completed tasks across {activeProjects} active projects.</p></div>
+        <div style={{ display: "flex", gap: "14px", flexShrink: 0 }}>{[["Completion", `${completionPct}%`], ["Workspaces", String(projects.length)]].map(([label, value]) => <div key={label} style={{ textAlign: "right" }}><b style={{ display: "block", fontSize: "18px" }}>{value}</b><span style={{ color: "rgba(255,255,255,.4)", fontSize: "11px" }}>{label}</span></div>)}</div>
       </div>
 
       {/* ── Stats ───────────────────────────────────────────────── */}
@@ -183,32 +196,7 @@ export default function DashboardPage() {
               </span>
             )}
           </h2>
-          {projects.length > 0 && (
-            <button
-              onClick={() => setShowModal(true)}
-              style={{
-                fontSize: "13px",
-                fontWeight: 500,
-                color: "#a855f7",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "4px 8px",
-                borderRadius: "6px",
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(168,85,247,0.08)"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Add new
-            </button>
-          )}
+          <div style={{ display: "flex", gap: "6px" }}>{(["all", "active", "completed"] as const).map((item) => <button key={item} onClick={() => setFilter(item)} style={{ padding: "5px 9px", borderRadius: "6px", border: "1px solid rgba(255,255,255,.09)", background: filter === item ? "rgba(168,85,247,.18)" : "transparent", color: filter === item ? "#d8b4fe" : "rgba(255,255,255,.45)", textTransform: "capitalize", fontSize: "12px", cursor: "pointer" }}>{item}</button>)}</div>
         </div>
 
         {projects.length === 0 ? (
@@ -276,8 +264,8 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: "16px" }}>
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+            {visibleProjects.map((project) => (
+              <ProjectCard key={project.id} project={project} onDeleted={handleProjectDeleted} />
             ))}
           </div>
         )}

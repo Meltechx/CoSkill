@@ -23,6 +23,15 @@ class UserOut(BaseModel):
     id: str
     email: str
     full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: str
+
+
+class OAuthUrlOut(BaseModel):
+    url: str
 
 
 class AuthResponse(BaseModel):

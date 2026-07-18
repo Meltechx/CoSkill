@@ -135,11 +135,17 @@ function DecomposingOverlay() {
 /* ── Task card ────────────────────────────────────────────────────────── */
 function TaskCard({
   task,
+  onStart,
   onComplete,
+  onReview,
+  starting,
   completing,
 }: {
   task: Task;
+  onStart: (id: string) => void;
   onComplete: (id: string) => void;
+  onReview: (task: Task) => void;
+  starting: boolean;
   completing: boolean;
 }) {
   const diff = DIFFICULTY[task.difficulty] ?? DIFFICULTY.medium;
@@ -154,7 +160,7 @@ function TaskCard({
         borderRadius: "12px",
         padding: "16px 18px",
         transition: "border-color 0.2s, background 0.2s",
-        opacity: isDone ? 0.65 : 1,
+        opacity: isDone && !task.is_flagged ? 0.65 : 1,
       }}
       onMouseEnter={(e) => {
         if (!isDone) (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(168,85,247,0.25)";
@@ -251,6 +257,20 @@ function TaskCard({
 
           {/* Meta pills */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
+            {isDone && (
+              <button
+                onClick={() => task.is_flagged && onReview(task)}
+                style={{
+                  fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px",
+                  background: task.is_flagged ? "rgba(251,191,36,0.12)" : "rgba(34,197,94,0.1)",
+                  border: `1px solid ${task.is_flagged ? "rgba(251,191,36,0.28)" : "rgba(34,197,94,0.25)"}`,
+                  color: task.is_flagged ? "#fbbf24" : "#4ade80",
+                  cursor: task.is_flagged ? "pointer" : "default",
+                }}
+              >
+                {task.is_flagged ? "Under Review" : "Verified"}
+              </button>
+            )}
             {/* Difficulty */}
             <span
               style={{
@@ -309,6 +329,21 @@ function TaskCard({
                 </span>
               );
             })}
+
+            {!isDone && (
+              <button
+                onClick={() => onStart(task.id)}
+                disabled={starting || completing}
+                style={{
+                  marginLeft: "auto", fontSize: "11px", fontWeight: 700, padding: "5px 9px", borderRadius: "6px",
+                  background: task.started_at ? "rgba(59,130,246,0.1)" : "rgba(168,85,247,0.14)",
+                  border: `1px solid ${task.started_at ? "rgba(59,130,246,0.25)" : "rgba(168,85,247,0.3)"}`,
+                  color: task.started_at ? "#60a5fa" : "#c084fc", cursor: starting || completing ? "not-allowed" : "pointer",
+                }}
+              >
+                {starting ? "Starting…" : task.started_at ? "Restart timer" : "Start task"}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -328,6 +363,10 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [decomposing, setDecomposing] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [startingId, setStartingId] = useState<string | null>(null);
+  const [reviewTask, setReviewTask] = useState<Task | null>(null);
+  const [verificationAnswer, setVerificationAnswer] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -370,10 +409,42 @@ export default function ProjectDetailPage() {
     try {
       const updated = await tasksApi.complete(taskId, token);
       setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      if (updated.is_flagged) {
+        setVerificationAnswer("");
+        setReviewTask(updated);
+      }
     } catch (err) {
       console.error("Failed to complete task:", err);
     } finally {
       setCompletingId(null);
+    }
+  };
+
+  const handleStartTask = async (taskId: string) => {
+    if (!token) return;
+    setStartingId(taskId);
+    try {
+      const updated = await tasksApi.start(taskId, token);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start task");
+    } finally {
+      setStartingId(null);
+    }
+  };
+
+  const handleVerifyTask = async () => {
+    if (!token || !reviewTask || !verificationAnswer.trim()) return;
+    setVerifying(true);
+    try {
+      const updated = await tasksApi.verify(reviewTask.id, verificationAnswer.trim(), token);
+      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+      setReviewTask(updated.is_flagged ? updated : null);
+      if (!updated.is_flagged) setVerificationAnswer("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to verify task");
+    } finally {
+      setVerifying(false);
     }
   };
 
@@ -704,7 +775,10 @@ export default function ProjectDetailPage() {
                     <TaskCard
                       key={task.id}
                       task={task}
+                      onStart={handleStartTask}
                       onComplete={handleCompleteTask}
+                      onReview={setReviewTask}
+                      starting={startingId === task.id}
                       completing={completingId === task.id}
                     />
                   ))}
@@ -722,15 +796,57 @@ export default function ProjectDetailPage() {
                     .filter((t) => t.status === "completed")
                     .map((task) => (
                       <TaskCard
-                        key={task.id}
-                        task={task}
-                        onComplete={handleCompleteTask}
-                        completing={completingId === task.id}
+                      key={task.id}
+                      task={task}
+                      onStart={handleStartTask}
+                      onComplete={handleCompleteTask}
+                      onReview={setReviewTask}
+                      starting={startingId === task.id}
+                      completing={completingId === task.id}
                       />
                     ))}
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {reviewTask && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="verification-title"
+            style={{ position: "fixed", inset: 0, zIndex: 50, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.72)", backdropFilter: "blur(5px)" }}
+          >
+            <div style={{ width: "min(100%, 510px)", padding: "24px", borderRadius: "16px", background: "#151515", border: "1px solid rgba(251,191,36,0.25)", boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "14px" }}>
+                <div>
+                  <p style={{ margin: 0, color: "#fbbf24", fontSize: "11px", fontWeight: 800, letterSpacing: "0.09em", textTransform: "uppercase" }}>Under review</p>
+                  <h2 id="verification-title" style={{ margin: "4px 0 0", color: "white", fontSize: "18px" }}>Verify your completion</h2>
+                </div>
+                <button onClick={() => setReviewTask(null)} aria-label="Close verification" style={{ border: 0, background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: "24px", cursor: "pointer" }}>×</button>
+              </div>
+              <p style={{ margin: "0 0 18px", color: "rgba(255,255,255,0.52)", fontSize: "13px", lineHeight: 1.55 }}>
+                {reviewTask.flag_reason || "This task needs a quick verification."}
+              </p>
+              <div style={{ padding: "14px", marginBottom: "14px", borderRadius: "10px", background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.15)", color: "rgba(255,255,255,0.9)", fontSize: "14px", lineHeight: 1.55 }}>
+                {reviewTask.verification_question || "Explain how you completed this task."}
+              </div>
+              <textarea
+                value={verificationAnswer}
+                onChange={(event) => setVerificationAnswer(event.target.value)}
+                placeholder="Describe your implementation, decisions, and outcome…"
+                rows={5}
+                style={{ width: "100%", resize: "vertical", boxSizing: "border-box", padding: "11px 12px", borderRadius: "9px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "white", font: "inherit", fontSize: "13px", outline: "none" }}
+              />
+              <button
+                onClick={handleVerifyTask}
+                disabled={verifying || !verificationAnswer.trim()}
+                style={{ width: "100%", marginTop: "14px", padding: "10px", border: 0, borderRadius: "9px", background: "linear-gradient(135deg, #a855f7, #3b82f6)", color: "white", fontWeight: 700, cursor: verifying || !verificationAnswer.trim() ? "not-allowed" : "pointer", opacity: verifying || !verificationAnswer.trim() ? 0.55 : 1 }}
+              >
+                {verifying ? "Reviewing answer…" : "Submit verification"}
+              </button>
+            </div>
           </div>
         )}
 

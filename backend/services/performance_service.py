@@ -187,6 +187,33 @@ class PerformanceService:
             overall_score=summary["overall_score"],
         )
 
+    async def apply_verification_penalty(self, task_id: str, user_id: str) -> None:
+        """Reduce a scored task by 20% when its verification answer fails."""
+        response = (
+            self.client.table("performance_scores")
+            .select("id, score, completion_time_score, difficulty_score, consistency_score")
+            .eq("task_id", task_id)
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        rows = response.data or []
+        if not rows:
+            return
+
+        score = rows[0]
+        updated = self.client.table("performance_scores").update({
+            "score": round(float(score["score"]) * 0.8, 1),
+            "completion_time_score": round(float(score["completion_time_score"]) * 0.8, 1),
+            "difficulty_score": round(float(score["difficulty_score"]) * 0.8, 1),
+            "consistency_score": round(float(score["consistency_score"]) * 0.8, 1),
+        }).eq("id", score["id"]).execute()
+        if not updated.data:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to apply the verification penalty.",
+            )
+
     # ── helpers ────────────────────────────────────────────────────────
 
     @staticmethod

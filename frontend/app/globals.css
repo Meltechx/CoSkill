@@ -4,9 +4,11 @@
 
 html {
   color-scheme: dark;
+  background: #080808;
 }
 
 body {
+  margin: 0;
   background: #080808;
   color: white;
   -webkit-font-smoothing: antialiased;

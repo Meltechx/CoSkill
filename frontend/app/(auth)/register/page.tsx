@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
+import { auth as authApi } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -27,6 +28,7 @@ export default function RegisterPage() {
       setLoading(false);
     }
   };
+  const signInWithGoogle = async () => { try { window.location.assign((await authApi.googleUrl()).url); } catch (err) { setError(err instanceof Error ? err.message : "Google sign-in is unavailable."); } };
 
   return (
     <main
@@ -81,6 +83,9 @@ export default function RegisterPage() {
           maxWidth: "400px",
         }}
       >
+        <Link href="/" style={{ display: "inline-flex", marginBottom: "20px", color: "rgba(255,255,255,0.48)", fontSize: "13px", textDecoration: "none" }}>
+          ← Back to home
+        </Link>
         {/* Logo */}
         <Link
           href="/"
@@ -311,6 +316,8 @@ export default function RegisterPage() {
               <span style={{ color: "rgba(255,255,255,0.4)" }}>Terms of Service</span>.
             </p>
           </form>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "20px 0" }}><span style={{ height: 1, flex: 1, background: "rgba(255,255,255,.09)" }} /><span style={{ color: "rgba(255,255,255,.3)", fontSize: 11 }}>OR</span><span style={{ height: 1, flex: 1, background: "rgba(255,255,255,.09)" }} /></div>
+          <button type="button" onClick={signInWithGoogle} style={{ width: "100%", padding: "11px", borderRadius: "10px", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.13)", color: "white", fontWeight: 600, cursor: "pointer" }}>G&nbsp;&nbsp; Continue with Google</button>
         </div>
 
         {/* Footer link */}

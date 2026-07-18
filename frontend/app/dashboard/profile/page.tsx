@@ -8,6 +8,7 @@ import {
   PerformanceSummary,
   SkillScore,
   RecentCompletion,
+  auth,
 } from "@/lib/api";
 
 /* ── Constants ────────────────────────────────────────────────────────── */
@@ -254,12 +255,18 @@ function Skeleton({ w, h, radius = 8 }: { w: string | number; h: number; radius?
 /* ── Main page ────────────────────────────────────────────────────────── */
 
 export default function ProfilePage() {
-  const { user, token } = useAuth();
+  const { user, token, updateUser } = useAuth();
   const [summary, setSummary] = useState<PerformanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [animate, setAnimate] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -275,6 +282,23 @@ export default function ProfilePage() {
       .finally(() => setLoading(false));
     return () => { if (animTimerRef.current) clearTimeout(animTimerRef.current); };
   }, [token]);
+
+  useEffect(() => { setFullName(user?.full_name || ""); }, [user?.full_name]);
+
+  const saveProfile = async () => {
+    if (!token || !user) return;
+    setSavingProfile(true);
+    try {
+      let nextUser = await auth.updateProfile(fullName, token);
+      if (avatarFile) nextUser = { ...(await auth.uploadAvatar(avatarFile, token)), full_name: nextUser.full_name };
+      updateUser(nextUser);
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      setEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save profile.");
+    } finally { setSavingProfile(false); }
+  };
 
   const handleShare = () => {
     if (!user) return;
@@ -415,26 +439,25 @@ export default function ProfilePage() {
           {/* Avatar + info */}
           <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
             {/* Avatar with gradient ring */}
-            <div style={{ padding: "2.5px", borderRadius: "50%", background: "linear-gradient(135deg, #a855f7, #3b82f6)", flexShrink: 0 }}>
+            <div onClick={() => editing && avatarInputRef.current?.click()} title={editing ? "Upload profile photo" : undefined} style={{ padding: "2.5px", borderRadius: "50%", background: "linear-gradient(135deg, #a855f7, #3b82f6)", flexShrink: 0, cursor: editing ? "pointer" : "default", position: "relative" }}>
               <div style={{
                 width: "72px", height: "72px", borderRadius: "50%",
                 background: "#141414",
                 display: "flex", alignItems: "center", justifyContent: "center",
+                overflow: "hidden",
               }}>
-                <span style={{
+                {avatarPreview || user?.avatar_url ? <img src={avatarPreview || user?.avatar_url || ""} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{
                   fontSize: "22px", fontWeight: 700,
                   background: "linear-gradient(135deg, #a855f7, #3b82f6)",
                   WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
                 }}>
                   {initials}
-                </span>
+                </span>}
               </div>
             </div>
 
             <div>
-              <h1 style={{ fontSize: "20px", fontWeight: 800, color: "white", letterSpacing: "-0.04em", marginBottom: "4px" }}>
-                {user?.full_name || "Anonymous"}
-              </h1>
+              {editing ? <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="auth-input" style={{ padding: "7px 10px", width: "220px", marginBottom: "4px", fontWeight: 700 }} /> : <h1 style={{ fontSize: "20px", fontWeight: 800, color: "white", letterSpacing: "-0.04em", marginBottom: "4px" }}>{user?.full_name || "Anonymous"}</h1>}
               <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.38)", marginBottom: "6px" }}>
                 {user?.email}
               </p>
@@ -454,6 +477,8 @@ export default function ProfilePage() {
 
           {/* Profile actions */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) { setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); } }} />
+          <button onClick={() => editing ? saveProfile() : setEditing(true)} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 14px", background: editing ? "#4ade80" : "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "9px", color: editing ? "#0b1710" : "rgba(255,255,255,0.75)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>{savingProfile ? "Saving…" : editing ? "Save profile" : "Edit profile"}</button>
           <button
             onClick={handleExportCv}
             disabled={!summary}

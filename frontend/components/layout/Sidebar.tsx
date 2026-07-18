@@ -36,6 +36,15 @@ const navItems = [
     ),
   },
   {
+    label: "Insights",
+    href: "/dashboard/insights",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 18h6M10 22h4M8 14a6 6 0 1 1 8 0c-.8.7-1.3 1.5-1.5 2.4H9.5C9.3 15.5 8.8 14.7 8 14Z" />
+      </svg>
+    ),
+  },
+  {
     label: "Profile",
     href: "/dashboard/profile",
     icon: (

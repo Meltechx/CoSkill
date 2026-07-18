@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from supabase import Client
+from config import settings
 
 
 class AuthService:
@@ -66,3 +67,37 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
         return response.user
+
+    async def google_oauth_url(self) -> str:
+        try:
+            response = self.client.auth.sign_in_with_oauth({
+                "provider": "google",
+                "options": {"redirect_to": f"{settings.FRONTEND_URL}/auth/callback"},
+            })
+            return response.url
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not start Google sign-in: {str(e)}")
+
+    async def update_profile(self, user_id: str, full_name: str) -> dict:
+        full_name = full_name.strip()
+        if not full_name:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Full name is required.")
+        self.client.table("users").update({"full_name": full_name}).eq("id", user_id).execute()
+        self.client.auth.admin.update_user_by_id(user_id, {"user_metadata": {"full_name": full_name}})
+        return {"full_name": full_name}
+
+    async def upload_avatar(self, user_id: str, filename: str, content: bytes, content_type: str | None) -> str:
+        if not content_type or not content_type.startswith("image/"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Please upload an image file.")
+        if len(content) > 5 * 1024 * 1024:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Image must be 5 MB or smaller.")
+        extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else "jpg"
+        path = f"{user_id}/avatar.{extension}"
+        try:
+            self.client.storage.from_("avatars").upload(path, content, {"content-type": content_type, "upsert": "true"})
+            url = self.client.storage.from_("avatars").get_public_url(path)
+            self.client.table("users").update({"avatar_url": url}).eq("id", user_id).execute()
+            self.client.auth.admin.update_user_by_id(user_id, {"user_metadata": {"avatar_url": url}})
+            return url
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not upload avatar: {str(e)}")

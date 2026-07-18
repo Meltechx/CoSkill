@@ -34,7 +34,7 @@ export async function api<T>(endpoint: string, options: ApiOptions = {}): Promis
 
 // Auth
 export interface AuthResponse {
-  user: { id: string; email: string; full_name: string | null };
+  user: { id: string; email: string; full_name: string | null; avatar_url?: string | null };
   session: { access_token: string; refresh_token: string };
 }
 
@@ -54,8 +54,19 @@ export const auth = {
   logout: (token: string) =>
     api<void>("/api/auth/logout", { method: "POST", token }),
 
-  me: (token: string) =>
-    api<{ id: string; email: string; full_name: string | null }>("/api/auth/me", { token }),
+  me: (token: string) => api<{ id: string; email: string; full_name: string | null; avatar_url?: string | null }>("/api/auth/me", { token }),
+
+  googleUrl: () => api<{ url: string }>("/api/auth/google"),
+
+  updateProfile: (full_name: string, token: string) => api<{ id: string; email: string; full_name: string | null; avatar_url?: string | null }>("/api/auth/me", { method: "PUT", body: { full_name }, token }),
+
+  uploadAvatar: async (file: File, token: string) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API_BASE}/api/auth/me/avatar`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form });
+    if (!res.ok) { const error = await res.json().catch(() => ({ detail: "Avatar upload failed" })); throw new Error(error.detail); }
+    return res.json() as Promise<{ id: string; email: string; full_name: string | null; avatar_url?: string | null }>;
+  },
 };
 
 // Projects
@@ -82,6 +93,12 @@ export interface Task {
   skill_tags: string[];
   created_at: string;
   completed_at: string | null;
+  started_at: string | null;
+  time_spent_minutes: number | null;
+  is_flagged: boolean;
+  flag_reason: string | null;
+  verification_question: string | null;
+  verification_answer: string | null;
 }
 
 export const projects = {
@@ -91,7 +108,7 @@ export const projects = {
   get: (id: string, token: string) =>
     api<Project>(`/api/projects/${id}`, { token }),
 
-  create: (data: { title: string; goal?: string; description?: string }, token: string) =>
+  create: (data: { title: string; goal?: string; description?: string; deadline?: string }, token: string) =>
     api<Project>("/api/projects/", { method: "POST", body: data, token }),
 
   delete: (id: string, token: string) =>
@@ -105,8 +122,14 @@ export const projects = {
 };
 
 export const tasks = {
+  start: (id: string, token: string) =>
+    api<Task>(`/api/tasks/${id}/start`, { method: "POST", token }),
+
   complete: (id: string, token: string) =>
     api<Task>(`/api/tasks/${id}/complete`, { method: "POST", token }),
+
+  verify: (id: string, verification_answer: string, token: string) =>
+    api<Task>(`/api/tasks/${id}/verify`, { method: "POST", body: { verification_answer }, token }),
 
   updateStatus: (id: string, status: Task["status"], token: string) =>
     api<Task>(`/api/tasks/${id}/status`, { method: "PATCH", body: { status }, token }),
@@ -142,6 +165,17 @@ export interface PerformanceSummary {
 export const performance = {
   summary: (token: string) =>
     api<PerformanceSummary>("/api/performance/summary", { token }),
+};
+
+export interface PerformanceInsights {
+  strengths: string[];
+  improvements: string[];
+  next_skill: string;
+  summary: string;
+}
+
+export const insights = {
+  get: (token: string) => api<PerformanceInsights>("/api/performance/insights", { token }),
 };
 
 export interface PublicProfile {

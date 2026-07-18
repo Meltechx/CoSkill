@@ -30,6 +30,10 @@ class TaskStatusUpdate(BaseModel):
     status: TaskStatus
 
 
+class TaskVerificationRequest(BaseModel):
+    verification_answer: str
+
+
 class TaskOut(BaseModel):
     id: str
     project_id: str
@@ -42,6 +46,12 @@ class TaskOut(BaseModel):
     skill_tags: list[str]
     created_at: datetime
     completed_at: Optional[datetime] = None
+    started_at: Optional[datetime] = None
+    time_spent_minutes: Optional[int] = None
+    is_flagged: bool = False
+    flag_reason: Optional[str] = None
+    verification_question: Optional[str] = None
+    verification_answer: Optional[str] = None
 
     class Config:
         from_attributes = True

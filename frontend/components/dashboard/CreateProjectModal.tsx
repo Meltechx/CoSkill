@@ -5,12 +5,13 @@ import { useState } from "react";
 interface CreateProjectModalProps {
   open: boolean;
   onClose: () => void;
-  onCreate: (data: { title: string; goal: string }) => Promise<void>;
+  onCreate: (data: { title: string; goal: string; deadline?: string }) => Promise<void>;
 }
 
 export default function CreateProjectModal({ open, onClose, onCreate }: CreateProjectModalProps) {
   const [title, setTitle] = useState("");
   const [goal, setGoal] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -21,9 +22,10 @@ export default function CreateProjectModal({ open, onClose, onCreate }: CreatePr
     setError("");
     setLoading(true);
     try {
-      await onCreate({ title, goal });
+      await onCreate({ title, goal, deadline: deadline ? new Date(`${deadline}T23:59:59`).toISOString() : undefined });
       setTitle("");
       setGoal("");
+      setDeadline("");
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create project");
@@ -169,6 +171,11 @@ export default function CreateProjectModal({ open, onClose, onCreate }: CreatePr
               </svg>
               More detail = better AI breakdown
             </p>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <label style={{ fontSize: "13px", fontWeight: 500, color: "rgba(255,255,255,0.5)" }}>Deadline <span style={{ color: "rgba(255,255,255,0.25)" }}>(optional)</span></label>
+            <input className="auth-input" type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </div>
 
           {/* Actions */}
