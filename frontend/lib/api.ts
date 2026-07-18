@@ -128,8 +128,20 @@ export const tasks = {
   start: (id: string, token: string) =>
     api<Task>(`/api/tasks/${id}/start`, { method: "POST", token }),
 
-  complete: (id: string, token: string) =>
-    api<Task>(`/api/tasks/${id}/complete`, { method: "POST", token }),
+  complete: async (id: string, files: File[], token: string): Promise<Task> => {
+    const form = new FormData();
+    files.forEach((f) => form.append("files", f));
+    const res = await fetch(`${API_BASE}/api/tasks/${id}/complete`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ detail: "Request failed" }));
+      throw new Error(error.detail || "Request failed");
+    }
+    return res.json();
+  },
 
   verify: (id: string, verification_answer: string, token: string) =>
     api<Task>(`/api/tasks/${id}/verify`, { method: "POST", body: { verification_answer }, token }),

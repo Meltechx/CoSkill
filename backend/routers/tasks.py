@@ -1,6 +1,7 @@
 import logging
+from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 
 from dependencies import get_ai_service, get_current_user, get_task_service, get_performance_service
 from models.task import TaskOut, TaskStatusUpdate, TaskVerificationRequest, TaskChatRequest, TaskChatOut
@@ -24,18 +25,41 @@ async def get_task(
 @router.post("/{task_id}/complete", response_model=TaskOut)
 async def complete_task(
     task_id: str,
+    files: List[UploadFile] = File(...),
     current_user=Depends(get_current_user),
     task_service: TaskService = Depends(get_task_service),
     perf_service: PerformanceService = Depends(get_performance_service),
+    ai_service: AIService = Depends(get_ai_service),
 ):
+    task_data = await task_service._get_task_with_ownership(task_id, str(current_user.id))
+
+    file_summaries = []
+    for f in files:
+        content = await f.read()
+        preview = ""
+        try:
+            text = content.decode("utf-8", errors="replace")
+            preview = text[:500]
+        except Exception:
+            preview = "(binary file)"
+        file_summaries.append(f"{f.filename} ({f.content_type or 'unknown'}) — {preview}")
+
+    relevant = await ai_service.analyze_file_relevance(
+        task_data["title"], task_data.get("description"), file_summaries
+    )
+    if not relevant:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Your uploaded files don't seem related to this task. Please upload relevant proof of your work.",
+        )
+
     task = await task_service.complete_task(task_id, str(current_user.id))
     try:
         await perf_service.score_task(task_id, str(current_user.id))
     except Exception as e:
-        # Scoring is non-critical — log and continue so task completion always succeeds
         logger.warning("Performance scoring failed for task %s: %s", task_id, e)
     if task["is_flagged"]:
-        question = await AIService().generate_verification_question(task["title"], task.get("description"))
+        question = await ai_service.generate_verification_question(task["title"], task.get("description"))
         task = await task_service.set_verification_question(task_id, question)
     return task
 

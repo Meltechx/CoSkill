@@ -193,6 +193,26 @@ class AIService:
                 detail="OpenAI returned an invalid verification score.",
             )
 
+    async def analyze_file_relevance(
+        self,
+        title: str,
+        description: str | None,
+        file_summaries: list[str],
+    ) -> bool:
+        system_prompt = (
+            "You verify whether uploaded files are relevant proof of work for a task. "
+            "Analyze the file names and content previews against the task description. "
+            "Return JSON only: {\"relevant\": true/false, \"reason\": \"...\"}"
+        )
+        files_text = "\n".join(f"  - {s}" for s in file_summaries)
+        user_message = (
+            f"Task title: {title}\n"
+            f"Task description: {description or 'No description provided.'}\n\n"
+            f"Uploaded files:\n{files_text}"
+        )
+        result = await self._json_completion(system_prompt, user_message)
+        return bool(result.get("relevant", False))
+
     async def _json_completion(self, system_prompt: str, user_message: str) -> dict:
         try:
             response = await self.client.chat.completions.create(

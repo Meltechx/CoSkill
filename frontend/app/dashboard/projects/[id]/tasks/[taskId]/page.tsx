@@ -160,31 +160,18 @@ export default function TaskDetailPage() {
     }
   }, [token, task, starting]);
 
-  const MINIMUM_MINUTES: Record<string, number> = { easy: 15, medium: 45, hard: 120, expert: 240 };
-
   const handleComplete = useCallback(async () => {
     if (!token || !task || completing) return;
 
-    const errors: string[] = [];
     if (uploadedFiles.length === 0) {
-      errors.push("Please upload proof of your work");
-    }
-    const minRequired = MINIMUM_MINUTES[task.difficulty] ?? MINIMUM_MINUTES.medium;
-    const elapsedMin = task.started_at
-      ? (Date.now() - new Date(task.started_at).getTime()) / 60000
-      : 0;
-    if (elapsedMin < minRequired) {
-      errors.push(`You need to spend at least ${minRequired} minutes on this task`);
-    }
-    if (errors.length > 0) {
-      setError(errors.join(" • "));
+      setError("Please upload proof of your work");
       return;
     }
 
     setCompleting(true);
     setError("");
     try {
-      const updated = await tasksApi.complete(task.id, token);
+      const updated = await tasksApi.complete(task.id, uploadedFiles, token);
       setTask(updated);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2500);
