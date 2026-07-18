@@ -2,6 +2,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import {
+  PolarAngleAxis,
+  PolarGrid,
+  Radar,
+  RadarChart,
+  ResponsiveContainer,
+} from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   performance as perfApi,
@@ -30,10 +37,36 @@ const SKILL_PALETTES = [
   { bar: "linear-gradient(90deg, #ec4899, #8b5cf6)",  glow: "rgba(236,72,153,0.3)" },
 ];
 
+const RADAR_CATEGORIES = [
+  { label: "Speed", aliases: ["speed", "delivery", "velocity", "time management"] },
+  { label: "Consistency", aliases: ["consistency", "consistent", "discipline", "routine"] },
+  { label: "Quality", aliases: ["quality", "testing", "test", "accuracy", "attention to detail"] },
+  { label: "Complexity", aliases: ["complexity", "complex", "architecture", "problem solving"] },
+  { label: "Reliability", aliases: ["reliability", "reliable", "dependability", "ownership"] },
+];
+
 function skillPalette(skill: string) {
   let h = 0;
   for (let i = 0; i < skill.length; i++) h = (h * 31 + skill.charCodeAt(i)) & 0xffff;
   return SKILL_PALETTES[h % SKILL_PALETTES.length];
+}
+
+function buildRadarData(skillProfiles: SkillScore[]) {
+  return RADAR_CATEGORIES.map(({ label, aliases }) => {
+    const matchingScores = skillProfiles
+      .filter(({ skill }) => {
+        const normalizedSkill = skill.toLowerCase();
+        return aliases.some((alias) => normalizedSkill.includes(alias));
+      })
+      .map(({ score }) => Math.max(0, Math.min(score, 100)));
+
+    return {
+      category: label,
+      score: matchingScores.length
+        ? Math.round(matchingScores.reduce((total, value) => total + value, 0) / matchingScores.length)
+        : 0,
+    };
+  });
 }
 
 function fmtDate(iso: string) {
@@ -127,6 +160,41 @@ function ScoreRing({ score, animate }: { score: number; animate: boolean }) {
         / 100
       </text>
     </svg>
+  );
+}
+
+/* ── Skill profile radar ─────────────────────────────────────────────── */
+
+function SkillProfileRadar({ skillProfiles, animate }: { skillProfiles: SkillScore[]; animate: boolean }) {
+  const data = buildRadarData(skillProfiles);
+
+  return (
+    <div style={{ width: "240px", height: "220px", flexShrink: 0 }} aria-label="Skill profile radar chart">
+      <ResponsiveContainer width="100%" height="100%">
+        <RadarChart data={data} cx="50%" cy="50%" outerRadius="64%">
+          <defs>
+            <linearGradient id="skillProfileRadarGradient" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor="#a855f7" stopOpacity={0.72} />
+              <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.32} />
+            </linearGradient>
+          </defs>
+          <PolarGrid stroke="rgba(255,255,255,0.16)" strokeWidth={1} />
+          <PolarAngleAxis
+            dataKey="category"
+            tick={{ fill: "rgba(255,255,255,0.58)", fontSize: 11, fontWeight: 600 }}
+          />
+          <Radar
+            dataKey="score"
+            stroke="#8b5cf6"
+            strokeWidth={2}
+            fill="url(#skillProfileRadarGradient)"
+            fillOpacity={1}
+            isAnimationActive={animate}
+            animationDuration={900}
+          />
+        </RadarChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -387,6 +455,9 @@ export default function ProfilePage() {
 
   const score = summary?.overall_score ?? 0;
   const scoreColor = score >= 80 ? "#4ade80" : score >= 60 ? "#fbbf24" : score >= 40 ? "#fb923c" : "#f87171";
+  // Prefer the named skill-profile field, while supporting the performance
+  // service's existing `skill_scores` response shape.
+  const skillProfiles = summary?.skill_profiles ?? summary?.skill_scores ?? [];
 
   return (
     <div style={{ padding: "40px", background: "#080808", minHeight: "100vh", color: "white" }}>
@@ -517,13 +588,13 @@ export default function ProfilePage() {
 
         {/* ── Score + stats ─────────────────────────────────────── */}
         <div style={{
-          display: "flex", gap: "20px", alignItems: "stretch",
+          display: "flex", flexWrap: "wrap", gap: "20px", alignItems: "stretch",
           marginBottom: "28px",
           background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
           borderRadius: "18px", padding: "24px",
         }}>
           {/* Score ring */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", paddingRight: "24px", borderRight: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
             <ScoreRing score={score} animate={animate} />
             <div style={{ textAlign: "center" }}>
               <p style={{ fontSize: "11px", fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -533,6 +604,14 @@ export default function ProfilePage() {
                 {score >= 80 ? "Excellent" : score >= 60 ? "Good" : score >= 40 ? "Developing" : score > 0 ? "Getting started" : "No data yet"}
               </p>
             </div>
+          </div>
+
+          {/* Skill profile radar */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingRight: "24px", borderRight: "1px solid rgba(255,255,255,0.07)" }}>
+            <p style={{ fontSize: "11px", fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "-4px" }}>
+              Skill Profile
+            </p>
+            <SkillProfileRadar skillProfiles={skillProfiles} animate={animate} />
           </div>
 
           {/* Stats grid */}

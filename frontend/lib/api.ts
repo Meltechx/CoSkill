@@ -162,6 +162,8 @@ export interface PerformanceSummary {
   completed_tasks: number;
   avg_task_score: number;
   skill_scores: SkillScore[];
+  /** Preferred performance-summary field for aggregated skill profile data. */
+  skill_profiles?: SkillScore[];
   recent_completions: RecentCompletion[];
 }
 
