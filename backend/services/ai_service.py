@@ -60,7 +60,6 @@ class AIService:
                     {"role": "user", "content": user_message},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.7,
             )
         except Exception as e:
             raise HTTPException(
@@ -115,7 +114,6 @@ class AIService:
                     {"role": "user", "content": user_message},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.6,
             )
         except Exception as e:
             raise HTTPException(
@@ -181,7 +179,6 @@ class AIService:
                     {"role": "user", "content": user_message},
                 ],
                 response_format={"type": "json_object"},
-                temperature=0.2,
             )
         except Exception as e:
             raise HTTPException(
