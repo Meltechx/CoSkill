@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { projects as projectsApi, tasks as tasksApi, Project, Task } from "@/lib/api";
+import { projects as projectsApi, Project, Task } from "@/lib/api";
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -135,225 +135,189 @@ function DecomposingOverlay() {
 /* ── Task card ────────────────────────────────────────────────────────── */
 function TaskCard({
   task,
-  onStart,
-  onComplete,
-  onReview,
-  onChat,
-  starting,
-  completing,
+  projectId,
 }: {
   task: Task;
-  onStart: (id: string) => void;
-  onComplete: (id: string) => void;
-  onReview: (task: Task) => void;
-  onChat: (task: Task) => void;
-  starting: boolean;
-  completing: boolean;
+  projectId: string;
 }) {
   const diff = DIFFICULTY[task.difficulty] ?? DIFFICULTY.medium;
   const stat = STATUS[task.status] ?? STATUS.todo;
   const isDone = task.status === "completed";
 
   return (
-    <div
-      style={{
-        background: isDone ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.03)",
-        border: `1px solid ${isDone ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.07)"}`,
-        borderRadius: "12px",
-        padding: "16px 18px",
-        transition: "border-color 0.2s, background 0.2s",
-        opacity: isDone && !task.is_flagged ? 0.65 : 1,
-      }}
-      onMouseEnter={(e) => {
-        if (!isDone) (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(168,85,247,0.25)";
-      }}
-      onMouseLeave={(e) => {
-        if (!isDone) (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)";
-      }}
+    <Link
+      href={`/dashboard/projects/${projectId}/tasks/${task.id}`}
+      style={{ textDecoration: "none", color: "inherit", display: "block" }}
     >
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
-        {/* Checkbox */}
-        <button
-          onClick={() => !isDone && !completing && onComplete(task.id)}
-          disabled={isDone || completing}
-          style={{
-            marginTop: "1px",
-            width: "20px",
-            height: "20px",
-            borderRadius: "6px",
-            border: isDone ? "none" : "1.5px solid rgba(255,255,255,0.2)",
-            background: isDone
-              ? "linear-gradient(135deg, #a855f7, #3b82f6)"
-              : completing
-              ? "rgba(168,85,247,0.15)"
-              : "transparent",
-            cursor: isDone || completing ? "default" : "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            transition: "background 0.2s, border-color 0.2s",
-          }}
-          onMouseEnter={(e) => {
-            if (!isDone && !completing) {
-              e.currentTarget.style.borderColor = "#a855f7";
-              e.currentTarget.style.background = "rgba(168,85,247,0.1)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!isDone && !completing) {
-              e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)";
-              e.currentTarget.style.background = "transparent";
-            }
-          }}
-        >
-          {completing ? (
-            <Spinner size={10} color="#a855f7" />
-          ) : isDone ? (
-            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-              <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          ) : null}
-        </button>
-
-        {/* Body */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Title row */}
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "6px" }}>
-            <h3
-              style={{
-                fontSize: "14px",
-                fontWeight: 600,
-                color: isDone ? "rgba(255,255,255,0.4)" : "white",
-                textDecoration: isDone ? "line-through" : "none",
-                letterSpacing: "-0.01em",
-                lineHeight: 1.35,
-              }}
-            >
-              {task.title}
-            </h3>
-            {/* Status badge */}
-            <span
-              style={{
-                flexShrink: 0,
-                fontSize: "11px",
-                fontWeight: 600,
-                padding: "3px 8px",
-                borderRadius: "6px",
-                background: stat.bg,
-                border: `1px solid ${stat.border}`,
-                color: stat.color,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {stat.label}
-            </span>
+      <div
+        style={{
+          background: isDone ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.03)",
+          border: `1px solid ${isDone ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.07)"}`,
+          borderRadius: "12px",
+          padding: "16px 18px",
+          transition: "border-color 0.2s, background 0.2s",
+          opacity: isDone && !task.is_flagged ? 0.65 : 1,
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(168,85,247,0.25)";
+          (e.currentTarget as HTMLDivElement).style.background = isDone ? "rgba(255,255,255,0.025)" : "rgba(255,255,255,0.045)";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.borderColor = isDone ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.07)";
+          (e.currentTarget as HTMLDivElement).style.background = isDone ? "rgba(255,255,255,0.015)" : "rgba(255,255,255,0.03)";
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
+          {/* Status indicator */}
+          <div
+            style={{
+              marginTop: "1px",
+              width: "20px",
+              height: "20px",
+              borderRadius: "6px",
+              border: isDone ? "none" : "1.5px solid rgba(255,255,255,0.2)",
+              background: isDone
+                ? "linear-gradient(135deg, #a855f7, #3b82f6)"
+                : "transparent",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {isDone && (
+              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
           </div>
 
-          {/* Description */}
-          {task.description && (
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.38)", lineHeight: 1.6, marginBottom: "10px" }}>
-              {task.description}
-            </p>
-          )}
-
-          {/* Meta pills */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
-            {isDone && (
-              <button
-                onClick={() => task.is_flagged && onReview(task)}
+          {/* Body */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Title row */}
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px", marginBottom: "6px" }}>
+              <h3
                 style={{
-                  fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px",
-                  background: task.is_flagged ? "rgba(251,191,36,0.12)" : "rgba(34,197,94,0.1)",
-                  border: `1px solid ${task.is_flagged ? "rgba(251,191,36,0.28)" : "rgba(34,197,94,0.25)"}`,
-                  color: task.is_flagged ? "#fbbf24" : "#4ade80",
-                  cursor: task.is_flagged ? "pointer" : "default",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: isDone ? "rgba(255,255,255,0.4)" : "white",
+                  textDecoration: isDone ? "line-through" : "none",
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1.35,
                 }}
               >
-                {task.is_flagged ? "Under Review" : "Verified"}
-              </button>
-            )}
-            {/* Difficulty */}
-            <span
-              style={{
-                fontSize: "11px",
-                fontWeight: 600,
-                padding: "3px 8px",
-                borderRadius: "6px",
-                background: diff.bg,
-                border: `1px solid ${diff.border}`,
-                color: diff.color,
-              }}
-            >
-              {diff.label}
-            </span>
+                {task.title}
+              </h3>
+              {/* Status badge */}
+              <span
+                style={{
+                  flexShrink: 0,
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  padding: "3px 8px",
+                  borderRadius: "6px",
+                  background: stat.bg,
+                  border: `1px solid ${stat.border}`,
+                  color: stat.color,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {stat.label}
+              </span>
+            </div>
 
-            {/* Hours */}
-            {task.estimated_hours != null && (
+            {/* Description */}
+            {task.description && (
+              <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.38)", lineHeight: 1.6, marginBottom: "10px", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {task.description}
+              </p>
+            )}
+
+            {/* Meta pills */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" }}>
+              {isDone && (
+                <span
+                  style={{
+                    fontSize: "11px", fontWeight: 700, padding: "3px 8px", borderRadius: "6px",
+                    background: task.is_flagged ? "rgba(251,191,36,0.12)" : "rgba(34,197,94,0.1)",
+                    border: `1px solid ${task.is_flagged ? "rgba(251,191,36,0.28)" : "rgba(34,197,94,0.25)"}`,
+                    color: task.is_flagged ? "#fbbf24" : "#4ade80",
+                  }}
+                >
+                  {task.is_flagged ? "Under Review" : "Verified"}
+                </span>
+              )}
+              {/* Difficulty */}
               <span
                 style={{
                   fontSize: "11px",
-                  fontWeight: 500,
+                  fontWeight: 600,
                   padding: "3px 8px",
                   borderRadius: "6px",
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  color: "rgba(255,255,255,0.45)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "3px",
+                  background: diff.bg,
+                  border: `1px solid ${diff.border}`,
+                  color: diff.color,
                 }}
               >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-                </svg>
-                {task.estimated_hours}h
+                {diff.label}
               </span>
-            )}
 
-            {/* Skill tags */}
-            {task.skill_tags.map((tag) => {
-              const p = tagPalette(tag);
-              return (
+              {/* Hours */}
+              {task.estimated_hours != null && (
                 <span
-                  key={tag}
                   style={{
                     fontSize: "11px",
                     fontWeight: 500,
                     padding: "3px 8px",
                     borderRadius: "6px",
-                    background: p.bg,
-                    border: `1px solid ${p.border}`,
-                    color: p.color,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    color: "rgba(255,255,255,0.45)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "3px",
                   }}
                 >
-                  {tag}
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  {task.estimated_hours}h
                 </span>
-              );
-            })}
+              )}
 
-            <button onClick={() => onChat(task)} style={{ fontSize: "11px", fontWeight: 700, padding: "5px 9px", borderRadius: "6px", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)", color: "#60a5fa", cursor: "pointer" }}>
-              ✦ Ask AI
-            </button>
+              {/* Skill tags */}
+              {task.skill_tags.map((tag) => {
+                const p = tagPalette(tag);
+                return (
+                  <span
+                    key={tag}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: 500,
+                      padding: "3px 8px",
+                      borderRadius: "6px",
+                      background: p.bg,
+                      border: `1px solid ${p.border}`,
+                      color: p.color,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                );
+              })}
 
-            {!isDone && (
-              <button
-                onClick={() => onStart(task.id)}
-                disabled={starting || completing}
-                style={{
-                  marginLeft: "auto", fontSize: "11px", fontWeight: 700, padding: "5px 9px", borderRadius: "6px",
-                  background: task.started_at ? "rgba(59,130,246,0.1)" : "rgba(168,85,247,0.14)",
-                  border: `1px solid ${task.started_at ? "rgba(59,130,246,0.25)" : "rgba(168,85,247,0.3)"}`,
-                  color: task.started_at ? "#60a5fa" : "#c084fc", cursor: starting || completing ? "not-allowed" : "pointer",
-                }}
-              >
-                {starting ? "Starting…" : task.started_at ? "Restart timer" : "Start task"}
-              </button>
-            )}
+              {/* Arrow indicator */}
+              <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", color: "rgba(255,255,255,0.2)" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -368,16 +332,6 @@ export default function ProjectDetailPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [decomposing, setDecomposing] = useState(false);
-  const [completingId, setCompletingId] = useState<string | null>(null);
-  const [startingId, setStartingId] = useState<string | null>(null);
-  const [reviewTask, setReviewTask] = useState<Task | null>(null);
-  const [verificationAnswer, setVerificationAnswer] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [chatTask, setChatTask] = useState<Task | null>(null);
-  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
-  const [chatDraft, setChatDraft] = useState("");
-  const [chatting, setChatting] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -412,73 +366,6 @@ export default function ProjectDetailPage() {
     } finally {
       setDecomposing(false);
     }
-  };
-
-  const handleCompleteTask = async (taskId: string) => {
-    if (!token) return;
-    setCompletingId(taskId);
-    try {
-      const updated = await tasksApi.complete(taskId, token);
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
-      setShowConfetti(true);
-      window.setTimeout(() => setShowConfetti(false), 2500);
-      if (updated.is_flagged) {
-        setVerificationAnswer("");
-        setReviewTask(updated);
-      }
-    } catch (err) {
-      console.error("Failed to complete task:", err);
-    } finally {
-      setCompletingId(null);
-    }
-  };
-
-  const handleStartTask = async (taskId: string) => {
-    if (!token) return;
-    setStartingId(taskId);
-    try {
-      const updated = await tasksApi.start(taskId, token);
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start task");
-    } finally {
-      setStartingId(null);
-    }
-  };
-
-  const handleVerifyTask = async () => {
-    if (!token || !reviewTask || !verificationAnswer.trim()) return;
-    setVerifying(true);
-    try {
-      const updated = await tasksApi.verify(reviewTask.id, verificationAnswer.trim(), token);
-      setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-      setReviewTask(updated.is_flagged ? updated : null);
-      if (!updated.is_flagged) setVerificationAnswer("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to verify task");
-    } finally {
-      setVerifying(false);
-    }
-  };
-
-  const openTaskChat = (task: Task) => {
-    setChatTask(task);
-    setChatMessages([{ role: "assistant", content: `I can help you plan or troubleshoot “${task.title}”. What would you like to know?` }]);
-    setChatDraft("");
-  };
-
-  const sendTaskChat = async () => {
-    if (!token || !chatTask || !chatDraft.trim() || chatting) return;
-    const message = chatDraft.trim();
-    setChatDraft("");
-    setChatMessages((items) => [...items, { role: "user", content: message }]);
-    setChatting(true);
-    try {
-      const response = await tasksApi.chat(chatTask.id, message, token);
-      setChatMessages((items) => [...items, { role: "assistant", content: response.reply }]);
-    } catch (err) {
-      setChatMessages((items) => [...items, { role: "assistant", content: err instanceof Error ? err.message : "I couldn't answer that right now." }]);
-    } finally { setChatting(false); }
   };
 
   const handleDeleteProject = async () => {
@@ -531,7 +418,6 @@ export default function ProjectDetailPage() {
 
   return (
     <div style={{ padding: "40px", background: "#080808", minHeight: "100vh", color: "white" }}>
-      {showConfetti && <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 90, pointerEvents: "none", overflow: "hidden" }}>{Array.from({ length: 42 }, (_, index) => <i key={index} className="task-confetti-piece" style={{ background: ["#a855f7", "#3b82f6", "#4ade80", "#fbbf24", "#ec4899"][index % 5], transform: `translateX(${(index - 21) * 5}px)`, ["--confetti-x" as string]: `${(index - 21) * 28}px`, animationDelay: `${(index % 7) * 35}ms` }} />)}</div>}
       <div style={{ maxWidth: "820px" }}>
 
         {/* ── Breadcrumb ────────────────────────────────────────── */}
@@ -809,12 +695,7 @@ export default function ProjectDetailPage() {
                     <TaskCard
                       key={task.id}
                       task={task}
-                      onStart={handleStartTask}
-                      onComplete={handleCompleteTask}
-                      onReview={setReviewTask}
-                      onChat={openTaskChat}
-                      starting={startingId === task.id}
-                      completing={completingId === task.id}
+                      projectId={projectId}
                     />
                   ))}
               </div>
@@ -831,14 +712,9 @@ export default function ProjectDetailPage() {
                     .filter((t) => t.status === "completed")
                     .map((task) => (
                       <TaskCard
-                      key={task.id}
-                      task={task}
-                      onStart={handleStartTask}
-                      onComplete={handleCompleteTask}
-                      onReview={setReviewTask}
-                      onChat={openTaskChat}
-                      starting={startingId === task.id}
-                      completing={completingId === task.id}
+                        key={task.id}
+                        task={task}
+                        projectId={projectId}
                       />
                     ))}
                 </div>
@@ -847,54 +723,6 @@ export default function ProjectDetailPage() {
           </div>
         )}
 
-        {reviewTask && (
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="verification-title"
-            style={{ position: "fixed", inset: 0, zIndex: 50, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,0.72)", backdropFilter: "blur(5px)" }}
-          >
-            <div style={{ width: "min(100%, 510px)", padding: "24px", borderRadius: "16px", background: "#151515", border: "1px solid rgba(251,191,36,0.25)", boxShadow: "0 24px 80px rgba(0,0,0,0.5)" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", marginBottom: "14px" }}>
-                <div>
-                  <p style={{ margin: 0, color: "#fbbf24", fontSize: "11px", fontWeight: 800, letterSpacing: "0.09em", textTransform: "uppercase" }}>Under review</p>
-                  <h2 id="verification-title" style={{ margin: "4px 0 0", color: "white", fontSize: "18px" }}>Verify your completion</h2>
-                </div>
-                <button onClick={() => setReviewTask(null)} aria-label="Close verification" style={{ border: 0, background: "transparent", color: "rgba(255,255,255,0.5)", fontSize: "24px", cursor: "pointer" }}>×</button>
-              </div>
-              <p style={{ margin: "0 0 18px", color: "rgba(255,255,255,0.52)", fontSize: "13px", lineHeight: 1.55 }}>
-                {reviewTask.flag_reason || "This task needs a quick verification."}
-              </p>
-              <div style={{ padding: "14px", marginBottom: "14px", borderRadius: "10px", background: "rgba(251,191,36,0.07)", border: "1px solid rgba(251,191,36,0.15)", color: "rgba(255,255,255,0.9)", fontSize: "14px", lineHeight: 1.55 }}>
-                {reviewTask.verification_question || "Explain how you completed this task."}
-              </div>
-              <textarea
-                value={verificationAnswer}
-                onChange={(event) => setVerificationAnswer(event.target.value)}
-                placeholder="Describe your implementation, decisions, and outcome…"
-                rows={5}
-                style={{ width: "100%", resize: "vertical", boxSizing: "border-box", padding: "11px 12px", borderRadius: "9px", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "white", font: "inherit", fontSize: "13px", outline: "none" }}
-              />
-              <button
-                onClick={handleVerifyTask}
-                disabled={verifying || !verificationAnswer.trim()}
-                style={{ width: "100%", marginTop: "14px", padding: "10px", border: 0, borderRadius: "9px", background: "linear-gradient(135deg, #a855f7, #3b82f6)", color: "white", fontWeight: 700, cursor: verifying || !verificationAnswer.trim() ? "not-allowed" : "pointer", opacity: verifying || !verificationAnswer.trim() ? 0.55 : 1 }}
-              >
-                {verifying ? "Reviewing answer…" : "Submit verification"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {chatTask && (
-          <div role="dialog" aria-modal="true" aria-labelledby="task-chat-title" style={{ position: "fixed", inset: 0, zIndex: 55, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,.72)", backdropFilter: "blur(5px)" }}>
-            <div style={{ width: "min(100%, 540px)", maxHeight: "min(680px, 90vh)", display: "flex", flexDirection: "column", padding: "22px", borderRadius: "17px", background: "#151515", border: "1px solid rgba(59,130,246,.25)", boxShadow: "0 28px 90px rgba(0,0,0,.55)" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 14, marginBottom: 16 }}><div><p style={{ margin: 0, color: "#60a5fa", fontSize: 11, fontWeight: 800, letterSpacing: ".09em" }}>TASK ASSISTANT</p><h2 id="task-chat-title" style={{ margin: "4px 0 0", fontSize: 18 }}>{chatTask.title}</h2></div><button onClick={() => setChatTask(null)} aria-label="Close chat" style={{ border: 0, background: "transparent", color: "rgba(255,255,255,.55)", fontSize: 23, cursor: "pointer" }}>×</button></div>
-              <div style={{ flex: 1, minHeight: 230, overflowY: "auto", display: "grid", alignContent: "start", gap: 10, padding: "2px 2px 14px" }}>{chatMessages.map((item, index) => <div key={index} style={{ justifySelf: item.role === "user" ? "end" : "start", maxWidth: "86%", padding: "10px 12px", borderRadius: 11, background: item.role === "user" ? "linear-gradient(135deg,#7c3aed,#2563eb)" : "rgba(255,255,255,.06)", color: item.role === "user" ? "white" : "rgba(255,255,255,.82)", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{item.content}</div>)}{chatting && <div style={{ color: "#60a5fa", fontSize: 13 }}>CoSkill is thinking…</div>}</div>
-              <form onSubmit={(e) => { e.preventDefault(); sendTaskChat(); }} style={{ display: "flex", gap: 8, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.08)" }}><input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} placeholder="Ask about this task…" className="auth-input" style={{ padding: "10px 12px" }} autoFocus /><button type="submit" disabled={chatting || !chatDraft.trim()} style={{ padding: "0 14px", border: 0, borderRadius: 9, background: "linear-gradient(135deg,#a855f7,#3b82f6)", color: "white", fontWeight: 700, cursor: "pointer", opacity: chatting || !chatDraft.trim() ? .55 : 1 }}>Send</button></form>
-            </div>
-          </div>
-        )}
 
       </div>
     </div>

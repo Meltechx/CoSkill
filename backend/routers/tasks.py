@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/{task_id}", response_model=TaskOut)
+async def get_task(
+    task_id: str,
+    current_user=Depends(get_current_user),
+    task_service: TaskService = Depends(get_task_service),
+):
+    return await task_service._get_task_with_ownership(task_id, str(current_user.id))
+
+
 @router.post("/{task_id}/complete", response_model=TaskOut)
 async def complete_task(
     task_id: str,

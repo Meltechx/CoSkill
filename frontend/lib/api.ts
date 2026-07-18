@@ -122,6 +122,9 @@ export const projects = {
 };
 
 export const tasks = {
+  get: (id: string, token: string) =>
+    api<Task>(`/api/tasks/${id}`, { token }),
+
   start: (id: string, token: string) =>
     api<Task>(`/api/tasks/${id}/start`, { method: "POST", token }),
 
