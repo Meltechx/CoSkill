@@ -218,21 +218,39 @@ export default function TaskDetailPage() {
     }
   }, [token, task, chatDraft, chatting]);
 
-  const handleFileDrop = useCallback((e: React.DragEvent) => {
+  const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     const files = Array.from(e.dataTransfer.files);
-    setUploadedFiles((prev) => [...prev, ...files]);
-  }, []);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setUploadedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    if (files.length > 0) {
+      setUploadedFiles((prev) => [...prev, ...files]);
     }
-  }, []);
+  };
 
-  const removeFile = useCallback((idx: number) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("[FileUpload] onChange fired", e.target.files);
+    const fileList = e.target.files;
+    console.log("[FileUpload] fileList:", fileList, "length:", fileList?.length);
+    if (fileList && fileList.length > 0) {
+      const files = Array.from(fileList);
+      console.log("[FileUpload] adding files:", files.map(f => `${f.name} (${f.size}B)`));
+      setUploadedFiles((prev) => {
+        const next = [...prev, ...files];
+        console.log("[FileUpload] new uploadedFiles state:", next.map(f => f.name));
+        return next;
+      });
+    } else {
+      console.log("[FileUpload] no files in fileList, skipping");
+    }
+    // Reset so the same file can be re-selected
+    e.target.value = "";
+  };
+
+  const removeFile = (idx: number) => {
     setUploadedFiles((prev) => prev.filter((_, i) => i !== idx));
-  }, []);
+  };
+
+  console.log("[FileUpload] render — uploadedFiles:", uploadedFiles.map(f => f.name));
 
   /* ── Derived ── */
   const diff = task ? (DIFFICULTY[task.difficulty] ?? DIFFICULTY.medium) : DIFFICULTY.medium;
@@ -505,10 +523,24 @@ export default function TaskDetailPage() {
                 Submit your work
               </h2>
 
+              <input
+                ref={(el) => {
+                  (fileInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                  console.log("[FileUpload] input ref set:", el);
+                }}
+                type="file"
+                multiple
+                onChange={handleFileSelect}
+                style={{ position: "absolute", width: 0, height: 0, opacity: 0, pointerEvents: "none" }}
+              />
               <div
                 onDrop={handleFileDrop}
-                onDragOver={(e) => e.preventDefault()}
-                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onClick={() => {
+                  console.log("[FileUpload] drop zone clicked, ref:", fileInputRef.current);
+                  fileInputRef.current?.click();
+                }}
                 style={{
                   padding: "32px 20px", borderRadius: 12, textAlign: "center", cursor: "pointer",
                   border: "2px dashed rgba(255,255,255,0.1)",
@@ -524,7 +556,6 @@ export default function TaskDetailPage() {
                   e.currentTarget.style.background = "rgba(255,255,255,0.015)";
                 }}
               >
-                <input ref={fileInputRef} type="file" multiple onChange={handleFileSelect} style={{ display: "none" }} />
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: 10 }}>
                   <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
@@ -538,29 +569,45 @@ export default function TaskDetailPage() {
 
               {uploadedFiles.length > 0 && (
                 <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.3)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                    {uploadedFiles.length} file{uploadedFiles.length !== 1 ? "s" : ""} selected
+                  </p>
                   {uploadedFiles.map((file, idx) => (
-                    <div key={idx} style={{
+                    <div key={`${file.name}-${file.size}-${idx}`} style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                       padding: "10px 14px", borderRadius: 10,
-                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                      background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.12)",
                     }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                           <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" />
                         </svg>
-                        <span style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {file.name}
                         </span>
-                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", flexShrink: 0 }}>
-                          {(file.size / 1024).toFixed(0)} KB
-                        </span>
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
-                        style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", cursor: "pointer", fontSize: 16, padding: "2px 6px" }}
-                      >
-                        &times;
-                      </button>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>
+                          {file.size < 1024
+                            ? `${file.size} B`
+                            : file.size < 1048576
+                            ? `${(file.size / 1024).toFixed(1)} KB`
+                            : `${(file.size / 1048576).toFixed(1)} MB`}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeFile(idx); }}
+                          style={{
+                            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)",
+                            borderRadius: 6, color: "rgba(239,68,68,0.6)", cursor: "pointer",
+                            fontSize: 14, lineHeight: 1, padding: "3px 7px",
+                            transition: "background 0.15s, color 0.15s",
+                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.15)"; e.currentTarget.style.color = "#f87171"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; e.currentTarget.style.color = "rgba(239,68,68,0.6)"; }}
+                        >
+                          &times;
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

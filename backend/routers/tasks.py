@@ -33,16 +33,35 @@ async def complete_task(
 ):
     task_data = await task_service._get_task_with_ownership(task_id, str(current_user.id))
 
+    TEXT_EXTENSIONS = {
+        ".html", ".htm", ".js", ".jsx", ".ts", ".tsx", ".css", ".scss",
+        ".txt", ".md", ".json", ".xml", ".yaml", ".yml", ".csv",
+        ".py", ".java", ".c", ".cpp", ".h", ".go", ".rs", ".rb",
+        ".sh", ".sql", ".env", ".toml", ".ini", ".cfg", ".log",
+        ".vue", ".svelte", ".astro", ".php",
+    }
+    import os
+
     file_summaries = []
     for f in files:
         content = await f.read()
-        preview = ""
-        try:
-            text = content.decode("utf-8", errors="replace")
-            preview = text[:500]
-        except Exception:
-            preview = "(binary file)"
-        file_summaries.append(f"{f.filename} ({f.content_type or 'unknown'}) — {preview}")
+        ext = os.path.splitext(f.filename or "")[1].lower()
+        is_text = ext in TEXT_EXTENSIONS or (f.content_type or "").startswith("text/")
+
+        if is_text:
+            try:
+                text = content.decode("utf-8", errors="replace")
+                preview = text[:1000]
+            except Exception:
+                preview = "(could not decode file content)"
+            file_summaries.append(
+                f"File: {f.filename} ({f.content_type or 'unknown'})\n"
+                f"Content preview:\n{preview}"
+            )
+        else:
+            file_summaries.append(
+                f"File: {f.filename} ({f.content_type or 'unknown'}, {len(content)} bytes) — binary file, no content preview"
+            )
 
     relevant = await ai_service.analyze_file_relevance(
         task_data["title"], task_data.get("description"), file_summaries

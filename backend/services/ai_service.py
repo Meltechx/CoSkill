@@ -200,15 +200,20 @@ class AIService:
         file_summaries: list[str],
     ) -> bool:
         system_prompt = (
-            "You verify whether uploaded files are relevant proof of work for a task. "
-            "Analyze the file names and content previews against the task description. "
-            "Return JSON only: {\"relevant\": true/false, \"reason\": \"...\"}"
+            "You verify whether uploaded files are relevant proof of work for a software task.\n\n"
+            "For text files (code, config, docs) you will receive the first 1000 characters of content — "
+            "read the actual code/text and judge whether it plausibly relates to the task.\n"
+            "For binary files (images, archives) you only have the filename — judge by name and type.\n\n"
+            "A file is relevant if its content, structure, or name reasonably relates to the task's subject, "
+            "technologies, or deliverables. Be lenient — screenshots, test outputs, configs, and partial "
+            "implementations all count as valid proof.\n\n"
+            "Return JSON only: {\"relevant\": true/false, \"reason\": \"one sentence explanation\"}"
         )
-        files_text = "\n".join(f"  - {s}" for s in file_summaries)
+        files_text = "\n\n".join(f"--- {i+1}. {s}" for i, s in enumerate(file_summaries))
         user_message = (
             f"Task title: {title}\n"
             f"Task description: {description or 'No description provided.'}\n\n"
-            f"Uploaded files:\n{files_text}"
+            f"Uploaded files:\n\n{files_text}"
         )
         result = await self._json_completion(system_prompt, user_message)
         return bool(result.get("relevant", False))
