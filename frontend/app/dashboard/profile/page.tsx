@@ -8,7 +8,6 @@ import {
   PerformanceSummary,
   SkillScore,
   RecentCompletion,
-  auth,
 } from "@/lib/api";
 
 /* ── Constants ────────────────────────────────────────────────────────── */
@@ -255,18 +254,12 @@ function Skeleton({ w, h, radius = 8 }: { w: string | number; h: number; radius?
 /* ── Main page ────────────────────────────────────────────────────────── */
 
 export default function ProfilePage() {
-  const { user, token, updateUser } = useAuth();
+  const { user, token } = useAuth();
   const [summary, setSummary] = useState<PerformanceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [animate, setAnimate] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [fullName, setFullName] = useState("");
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -275,30 +268,12 @@ export default function ProfilePage() {
       .summary(token)
       .then((data) => {
         setSummary(data);
-        // trigger animations after a short paint delay
         animTimerRef.current = setTimeout(() => setAnimate(true), 80);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load performance data"))
       .finally(() => setLoading(false));
     return () => { if (animTimerRef.current) clearTimeout(animTimerRef.current); };
   }, [token]);
-
-  useEffect(() => { setFullName(user?.full_name || ""); }, [user?.full_name]);
-
-  const saveProfile = async () => {
-    if (!token || !user) return;
-    setSavingProfile(true);
-    try {
-      let nextUser = await auth.updateProfile(fullName, token);
-      if (avatarFile) nextUser = { ...(await auth.uploadAvatar(avatarFile, token)), full_name: nextUser.full_name };
-      updateUser(nextUser);
-      setAvatarFile(null);
-      setAvatarPreview(null);
-      setEditing(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save profile.");
-    } finally { setSavingProfile(false); }
-  };
 
   const handleShare = () => {
     if (!user) return;
@@ -312,7 +287,6 @@ export default function ProfilePage() {
   const handleExportCv = () => {
     if (!user || !summary) return;
 
-    // Open first so browsers keep this user-triggered action eligible for printing.
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
@@ -439,25 +413,30 @@ export default function ProfilePage() {
           {/* Avatar + info */}
           <div style={{ display: "flex", alignItems: "center", gap: "18px" }}>
             {/* Avatar with gradient ring */}
-            <div onClick={() => editing && avatarInputRef.current?.click()} title={editing ? "Upload profile photo" : undefined} style={{ padding: "2.5px", borderRadius: "50%", background: "linear-gradient(135deg, #a855f7, #3b82f6)", flexShrink: 0, cursor: editing ? "pointer" : "default", position: "relative" }}>
+            <div style={{ padding: "2.5px", borderRadius: "50%", background: "linear-gradient(135deg, #a855f7, #3b82f6)", flexShrink: 0 }}>
               <div style={{
                 width: "72px", height: "72px", borderRadius: "50%",
                 background: "#141414",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 overflow: "hidden",
               }}>
-                {avatarPreview || user?.avatar_url ? <img src={avatarPreview || user?.avatar_url || ""} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <span style={{
-                  fontSize: "22px", fontWeight: 700,
-                  background: "linear-gradient(135deg, #a855f7, #3b82f6)",
-                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
-                }}>
-                  {initials}
-                </span>}
+                {user?.avatar_url
+                  ? <img src={user.avatar_url} alt="Profile" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <span style={{
+                      fontSize: "22px", fontWeight: 700,
+                      background: "linear-gradient(135deg, #a855f7, #3b82f6)",
+                      WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
+                    }}>
+                      {initials}
+                    </span>
+                }
               </div>
             </div>
 
             <div>
-              {editing ? <input value={fullName} onChange={(e) => setFullName(e.target.value)} className="auth-input" style={{ padding: "7px 10px", width: "220px", marginBottom: "4px", fontWeight: 700 }} /> : <h1 style={{ fontSize: "20px", fontWeight: 800, color: "white", letterSpacing: "-0.04em", marginBottom: "4px" }}>{user?.full_name || "Anonymous"}</h1>}
+              <h1 style={{ fontSize: "20px", fontWeight: 800, color: "white", letterSpacing: "-0.04em", marginBottom: "4px" }}>
+                {user?.full_name || "Anonymous"}
+              </h1>
               <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.38)", marginBottom: "6px" }}>
                 {user?.email}
               </p>
@@ -466,7 +445,6 @@ export default function ProfilePage() {
                   width: "6px", height: "6px", borderRadius: "50%",
                   background: "#4ade80",
                   boxShadow: "0 0 6px #4ade80",
-                  animation: "badge-pulse 2s ease-in-out infinite",
                 }} />
                 <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.3)", fontWeight: 500 }}>
                   Active member
@@ -477,65 +455,63 @@ export default function ProfilePage() {
 
           {/* Profile actions */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(e) => { const file = e.target.files?.[0]; if (file) { setAvatarFile(file); setAvatarPreview(URL.createObjectURL(file)); } }} />
-          <button onClick={() => editing ? saveProfile() : setEditing(true)} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 14px", background: editing ? "#4ade80" : "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "9px", color: editing ? "#0b1710" : "rgba(255,255,255,0.75)", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>{savingProfile ? "Saving…" : editing ? "Save profile" : "Edit profile"}</button>
-          <button
-            onClick={handleExportCv}
-            disabled={!summary}
-            style={{
-              display: "flex", alignItems: "center", gap: "7px", padding: "9px 16px",
-              background: "linear-gradient(135deg, #a855f7, #3b82f6)", border: "none", borderRadius: "9px",
-              color: "white", fontSize: "13px", fontWeight: 700, cursor: summary ? "pointer" : "not-allowed",
-              opacity: summary ? 1 : 0.5, flexShrink: 0,
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
-            Export CV
-          </button>
-          <button
-            onClick={handleShare}
-            style={{
-              display: "flex", alignItems: "center", gap: "7px",
-              padding: "9px 16px",
-              background: copied ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.05)",
-              border: `1px solid ${copied ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.09)"}`,
-              borderRadius: "9px",
-              color: copied ? "#4ade80" : "rgba(255,255,255,0.65)",
-              fontSize: "13px", fontWeight: 600, cursor: "pointer",
-              transition: "background 0.2s, border-color 0.2s, color 0.2s",
-              flexShrink: 0,
-            }}
-            onMouseEnter={(e) => {
-              if (!copied) {
-                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                e.currentTarget.style.color = "white";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!copied) {
-                e.currentTarget.style.background = "rgba(255,255,255,0.05)";
-                e.currentTarget.style.color = "rgba(255,255,255,0.65)";
-              }
-            }}
-          >
-            {copied ? (
-              <>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Copied!
-              </>
-            ) : (
-              <>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-                  <polyline points="16 6 12 2 8 6" />
-                  <line x1="12" y1="2" x2="12" y2="15" />
-                </svg>
-                Share Profile
-              </>
-            )}
-          </button>
+            <button
+              onClick={handleExportCv}
+              disabled={!summary}
+              style={{
+                display: "flex", alignItems: "center", gap: "7px", padding: "9px 16px",
+                background: "linear-gradient(135deg, #a855f7, #3b82f6)", border: "none", borderRadius: "9px",
+                color: "white", fontSize: "13px", fontWeight: 700, cursor: summary ? "pointer" : "not-allowed",
+                opacity: summary ? 1 : 0.5, flexShrink: 0,
+              }}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+              Export CV
+            </button>
+            <button
+              onClick={handleShare}
+              style={{
+                display: "flex", alignItems: "center", gap: "7px",
+                padding: "9px 16px",
+                background: copied ? "rgba(34,197,94,0.12)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${copied ? "rgba(34,197,94,0.3)" : "rgba(255,255,255,0.09)"}`,
+                borderRadius: "9px",
+                color: copied ? "#4ade80" : "rgba(255,255,255,0.65)",
+                fontSize: "13px", fontWeight: 600, cursor: "pointer",
+                transition: "background 0.2s, border-color 0.2s, color 0.2s",
+                flexShrink: 0,
+              }}
+              onMouseEnter={(e) => {
+                if (!copied) {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                  e.currentTarget.style.color = "white";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!copied) {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                  e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+                }
+              }}
+            >
+              {copied ? (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                    <polyline points="16 6 12 2 8 6" />
+                    <line x1="12" y1="2" x2="12" y2="15" />
+                  </svg>
+                  Share Profile
+                </>
+              )}
+            </button>
           </div>
         </div>
 
