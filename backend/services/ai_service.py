@@ -150,6 +150,29 @@ class AIService:
             )
         return question.strip()
 
+    async def chat_about_task(self, title: str, description: str | None, difficulty: str, message: str) -> str:
+        context = (
+            "You are CoSkill's helpful project assistant. Give concise, practical guidance about the user's task. "
+            "Do not claim work was completed; explain approaches, next steps, trade-offs, and troubleshooting.\n\n"
+            f"Task title: {title}\nTask description: {description or 'No description provided.'}\n"
+            f"Difficulty: {difficulty}"
+        )
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-5.6",
+                messages=[
+                    {"role": "system", "content": context},
+                    {"role": "user", "content": message},
+                ],
+            )
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"OpenAI API error: {str(e)}")
+
+        reply = response.choices[0].message.content
+        if not reply:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="OpenAI returned an empty task-chat response.")
+        return reply.strip()
+
     async def evaluate_verification_answer(
         self,
         title: str,

@@ -7,6 +7,23 @@ import StatsCard from "@/components/dashboard/StatsCard";
 import ProjectCard from "@/components/dashboard/ProjectCard";
 import CreateProjectModal from "@/components/dashboard/CreateProjectModal";
 
+function ActivityHeatmap({ tasks }: { tasks: Task[] }) {
+  const days = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - (29 - index));
+    const count = tasks.filter((task) => task.completed_at && new Date(task.completed_at).toDateString() === date.toDateString()).length;
+    return { date, count };
+  });
+  const max = Math.max(1, ...days.map((day) => day.count));
+  const color = (count: number) => count === 0 ? "rgba(255,255,255,.06)" : count / max < .34 ? "rgba(34,197,94,.35)" : count / max < .67 ? "rgba(34,197,94,.63)" : "#22c55e";
+  return <section style={{ marginBottom: 28, padding: "19px 20px", borderRadius: 15, background: "rgba(255,255,255,.025)", border: "1px solid rgba(255,255,255,.07)" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}><div><h2 style={{ margin: 0, fontSize: 15 }}>Activity</h2><p style={{ margin: "4px 0 0", color: "rgba(255,255,255,.38)", fontSize: 12 }}>Tasks completed over the last 30 days</p></div><span style={{ color: "#4ade80", fontSize: 12, fontWeight: 700 }}>{days.reduce((sum, day) => sum + day.count, 0)} completed</span></div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(15, minmax(12px, 1fr))", gap: 6 }}>{days.map((day) => <div key={day.date.toISOString()} title={`${day.date.toLocaleDateString()}: ${day.count} completed`} style={{ aspectRatio: "1", minHeight: 13, borderRadius: 3, background: color(day.count), boxShadow: day.count ? "0 0 8px rgba(34,197,94,.16)" : "none" }} />)}</div>
+    <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 5, marginTop: 9, color: "rgba(255,255,255,.32)", fontSize: 10 }}><span>Less</span>{[0, .25, .55, 1].map((level) => <i key={level} style={{ width: 10, height: 10, borderRadius: 2, background: level ? `rgba(34,197,94,${level})` : "rgba(255,255,255,.06)" }} />)}<span>More</span></div>
+  </section>;
+}
+
 export default function DashboardPage() {
   const { token, user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -14,6 +31,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filter, setFilter] = useState<"all" | "active" | "completed">("all");
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     if (!token) return;
@@ -33,6 +51,9 @@ export default function DashboardPage() {
     };
     fetchData();
   }, [token]);
+
+  useEffect(() => { if (typeof window !== "undefined" && !localStorage.getItem("coskill-onboarding-seen")) setShowTour(true); }, []);
+  const closeTour = () => { localStorage.setItem("coskill-onboarding-seen", "true"); setShowTour(false); };
 
   const handleCreateProject = async (data: { title: string; goal: string; deadline?: string }) => {
     if (!token) return;
@@ -176,6 +197,8 @@ export default function DashboardPage() {
         />
       </div>
 
+      <ActivityHeatmap tasks={allTasks} />
+
       {/* ── Projects ─────────────────────────────────────────────── */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
@@ -276,6 +299,8 @@ export default function DashboardPage() {
         onClose={() => setShowModal(false)}
         onCreate={handleCreateProject}
       />
+
+      {showTour && <div role="dialog" aria-modal="true" aria-labelledby="tour-title" style={{ position: "fixed", inset: 0, zIndex: 70, display: "grid", placeItems: "center", padding: 20, background: "rgba(0,0,0,.75)", backdropFilter: "blur(7px)" }}><div style={{ width: "min(100%, 650px)", padding: 28, borderRadius: 19, background: "#141414", border: "1px solid rgba(168,85,247,.27)", boxShadow: "0 32px 90px rgba(0,0,0,.6)" }}><div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}><div><p style={{ margin: 0, color: "#c084fc", fontSize: 11, fontWeight: 800, letterSpacing: ".1em" }}>WELCOME TO COSKILL</p><h2 id="tour-title" style={{ margin: "6px 0 0", fontSize: 23, letterSpacing: "-.04em" }}>Turn every project into proof of work.</h2></div><button onClick={closeTour} style={{ border: 0, background: "transparent", color: "rgba(255,255,255,.45)", cursor: "pointer", fontSize: 13 }}>Skip</button></div><div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 11, margin: "25px 0" }}>{[["01", "Create Project", "Add a goal and deadline."], ["02", "AI Decomposes", "Get focused tasks and skills."], ["03", "Build Your CV", "Track wins and share proof."]].map(([number, title, text]) => <div key={number} style={{ padding: 15, borderRadius: 12, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.07)" }}><b style={{ color: "#c084fc", fontSize: 12 }}>{number}</b><h3 style={{ margin: "13px 0 5px", fontSize: 14 }}>{title}</h3><p style={{ margin: 0, color: "rgba(255,255,255,.42)", fontSize: 12, lineHeight: 1.5 }}>{text}</p></div>)}</div><div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}><button onClick={closeTour} style={{ padding: "9px 13px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,.1)", color: "rgba(255,255,255,.6)", cursor: "pointer" }}>Skip tour</button><button onClick={closeTour} style={{ padding: "9px 14px", borderRadius: 8, background: "linear-gradient(135deg,#a855f7,#3b82f6)", border: 0, color: "white", fontWeight: 700, cursor: "pointer" }}>Let&apos;s go →</button></div></div></div>}
     </div>
   );
 }

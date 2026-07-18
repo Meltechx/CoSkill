@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from dependencies import get_ai_service, get_current_user, get_task_service, get_performance_service
-from models.task import TaskOut, TaskStatusUpdate, TaskVerificationRequest
+from models.task import TaskOut, TaskStatusUpdate, TaskVerificationRequest, TaskChatRequest, TaskChatOut
 from services.ai_service import AIService
 from services.task_service import TaskService
 from services.performance_service import PerformanceService
@@ -64,6 +64,21 @@ async def verify_task(
     if not passed:
         await perf_service.apply_verification_penalty(task_id, str(current_user.id))
     return await task_service.record_verification(task_id, str(current_user.id), answer, passed)
+
+
+@router.post("/{task_id}/chat", response_model=TaskChatOut)
+async def chat_about_task(
+    task_id: str,
+    body: TaskChatRequest,
+    current_user=Depends(get_current_user),
+    task_service: TaskService = Depends(get_task_service),
+    ai_service: AIService = Depends(get_ai_service),
+):
+    message = body.message.strip()
+    if not message:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A chat message is required.")
+    task = await task_service._get_task_with_ownership(task_id, str(current_user.id))
+    return {"reply": await ai_service.chat_about_task(task["title"], task.get("description"), task["difficulty"], message)}
 
 
 @router.patch("/{task_id}/status", response_model=TaskOut)

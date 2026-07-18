@@ -168,6 +168,22 @@ input:-webkit-autofill:focus {
   to { transform: rotate(360deg); }
 }
 
+@keyframes task-confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--confetti-x), 72vh) rotate(700deg); }
+}
+
+.task-confetti-piece {
+  position: fixed;
+  top: 20vh;
+  left: 50%;
+  width: 9px;
+  height: 14px;
+  border-radius: 2px;
+  animation: task-confetti 2.4s ease-out forwards;
+  pointer-events: none;
+}
+
 .auth-spinner {
   width: 16px;
   height: 16px;

@@ -131,6 +131,9 @@ export const tasks = {
   verify: (id: string, verification_answer: string, token: string) =>
     api<Task>(`/api/tasks/${id}/verify`, { method: "POST", body: { verification_answer }, token }),
 
+  chat: (id: string, message: string, token: string) =>
+    api<{ reply: string }>(`/api/tasks/${id}/chat`, { method: "POST", body: { message }, token }),
+
   updateStatus: (id: string, status: Task["status"], token: string) =>
     api<Task>(`/api/tasks/${id}/status`, { method: "PATCH", body: { status }, token }),
 };

@@ -34,6 +34,14 @@ class TaskVerificationRequest(BaseModel):
     verification_answer: str
 
 
+class TaskChatRequest(BaseModel):
+    message: str
+
+
+class TaskChatOut(BaseModel):
+    reply: str
+
+
 class TaskOut(BaseModel):
     id: str
     project_id: str

@@ -138,6 +138,7 @@ function TaskCard({
   onStart,
   onComplete,
   onReview,
+  onChat,
   starting,
   completing,
 }: {
@@ -145,6 +146,7 @@ function TaskCard({
   onStart: (id: string) => void;
   onComplete: (id: string) => void;
   onReview: (task: Task) => void;
+  onChat: (task: Task) => void;
   starting: boolean;
   completing: boolean;
 }) {
@@ -330,6 +332,10 @@ function TaskCard({
               );
             })}
 
+            <button onClick={() => onChat(task)} style={{ fontSize: "11px", fontWeight: 700, padding: "5px 9px", borderRadius: "6px", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.25)", color: "#60a5fa", cursor: "pointer" }}>
+              ✦ Ask AI
+            </button>
+
             {!isDone && (
               <button
                 onClick={() => onStart(task.id)}
@@ -367,6 +373,11 @@ export default function ProjectDetailPage() {
   const [reviewTask, setReviewTask] = useState<Task | null>(null);
   const [verificationAnswer, setVerificationAnswer] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [chatTask, setChatTask] = useState<Task | null>(null);
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [chatDraft, setChatDraft] = useState("");
+  const [chatting, setChatting] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -409,6 +420,8 @@ export default function ProjectDetailPage() {
     try {
       const updated = await tasksApi.complete(taskId, token);
       setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      setShowConfetti(true);
+      window.setTimeout(() => setShowConfetti(false), 2500);
       if (updated.is_flagged) {
         setVerificationAnswer("");
         setReviewTask(updated);
@@ -446,6 +459,26 @@ export default function ProjectDetailPage() {
     } finally {
       setVerifying(false);
     }
+  };
+
+  const openTaskChat = (task: Task) => {
+    setChatTask(task);
+    setChatMessages([{ role: "assistant", content: `I can help you plan or troubleshoot “${task.title}”. What would you like to know?` }]);
+    setChatDraft("");
+  };
+
+  const sendTaskChat = async () => {
+    if (!token || !chatTask || !chatDraft.trim() || chatting) return;
+    const message = chatDraft.trim();
+    setChatDraft("");
+    setChatMessages((items) => [...items, { role: "user", content: message }]);
+    setChatting(true);
+    try {
+      const response = await tasksApi.chat(chatTask.id, message, token);
+      setChatMessages((items) => [...items, { role: "assistant", content: response.reply }]);
+    } catch (err) {
+      setChatMessages((items) => [...items, { role: "assistant", content: err instanceof Error ? err.message : "I couldn't answer that right now." }]);
+    } finally { setChatting(false); }
   };
 
   const handleDeleteProject = async () => {
@@ -498,6 +531,7 @@ export default function ProjectDetailPage() {
 
   return (
     <div style={{ padding: "40px", background: "#080808", minHeight: "100vh", color: "white" }}>
+      {showConfetti && <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 90, pointerEvents: "none", overflow: "hidden" }}>{Array.from({ length: 42 }, (_, index) => <i key={index} className="task-confetti-piece" style={{ background: ["#a855f7", "#3b82f6", "#4ade80", "#fbbf24", "#ec4899"][index % 5], transform: `translateX(${(index - 21) * 5}px)`, ["--confetti-x" as string]: `${(index - 21) * 28}px`, animationDelay: `${(index % 7) * 35}ms` }} />)}</div>}
       <div style={{ maxWidth: "820px" }}>
 
         {/* ── Breadcrumb ────────────────────────────────────────── */}
@@ -778,6 +812,7 @@ export default function ProjectDetailPage() {
                       onStart={handleStartTask}
                       onComplete={handleCompleteTask}
                       onReview={setReviewTask}
+                      onChat={openTaskChat}
                       starting={startingId === task.id}
                       completing={completingId === task.id}
                     />
@@ -801,6 +836,7 @@ export default function ProjectDetailPage() {
                       onStart={handleStartTask}
                       onComplete={handleCompleteTask}
                       onReview={setReviewTask}
+                      onChat={openTaskChat}
                       starting={startingId === task.id}
                       completing={completingId === task.id}
                       />
@@ -846,6 +882,16 @@ export default function ProjectDetailPage() {
               >
                 {verifying ? "Reviewing answer…" : "Submit verification"}
               </button>
+            </div>
+          </div>
+        )}
+
+        {chatTask && (
+          <div role="dialog" aria-modal="true" aria-labelledby="task-chat-title" style={{ position: "fixed", inset: 0, zIndex: 55, display: "grid", placeItems: "center", padding: "20px", background: "rgba(0,0,0,.72)", backdropFilter: "blur(5px)" }}>
+            <div style={{ width: "min(100%, 540px)", maxHeight: "min(680px, 90vh)", display: "flex", flexDirection: "column", padding: "22px", borderRadius: "17px", background: "#151515", border: "1px solid rgba(59,130,246,.25)", boxShadow: "0 28px 90px rgba(0,0,0,.55)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 14, marginBottom: 16 }}><div><p style={{ margin: 0, color: "#60a5fa", fontSize: 11, fontWeight: 800, letterSpacing: ".09em" }}>TASK ASSISTANT</p><h2 id="task-chat-title" style={{ margin: "4px 0 0", fontSize: 18 }}>{chatTask.title}</h2></div><button onClick={() => setChatTask(null)} aria-label="Close chat" style={{ border: 0, background: "transparent", color: "rgba(255,255,255,.55)", fontSize: 23, cursor: "pointer" }}>×</button></div>
+              <div style={{ flex: 1, minHeight: 230, overflowY: "auto", display: "grid", alignContent: "start", gap: 10, padding: "2px 2px 14px" }}>{chatMessages.map((item, index) => <div key={index} style={{ justifySelf: item.role === "user" ? "end" : "start", maxWidth: "86%", padding: "10px 12px", borderRadius: 11, background: item.role === "user" ? "linear-gradient(135deg,#7c3aed,#2563eb)" : "rgba(255,255,255,.06)", color: item.role === "user" ? "white" : "rgba(255,255,255,.82)", fontSize: 13, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{item.content}</div>)}{chatting && <div style={{ color: "#60a5fa", fontSize: 13 }}>CoSkill is thinking…</div>}</div>
+              <form onSubmit={(e) => { e.preventDefault(); sendTaskChat(); }} style={{ display: "flex", gap: 8, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,.08)" }}><input value={chatDraft} onChange={(e) => setChatDraft(e.target.value)} placeholder="Ask about this task…" className="auth-input" style={{ padding: "10px 12px" }} autoFocus /><button type="submit" disabled={chatting || !chatDraft.trim()} style={{ padding: "0 14px", border: 0, borderRadius: 9, background: "linear-gradient(135deg,#a855f7,#3b82f6)", color: "white", fontWeight: 700, cursor: "pointer", opacity: chatting || !chatDraft.trim() ? .55 : 1 }}>Send</button></form>
             </div>
           </div>
         )}
