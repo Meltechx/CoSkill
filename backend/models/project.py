@@ -30,12 +30,3 @@ class ProjectOut(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class ProjectRiskOut(BaseModel):
-    overall_score: int
-    risk_level: str
-    category_scores: dict[str, int]
-    reasons: list[str]
-    recommendations: list[str]
-    summary: str

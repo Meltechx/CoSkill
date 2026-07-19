@@ -1,12 +1,9 @@
-from asyncio import gather
-
 from fastapi import APIRouter, Depends, status
 
-from database import supabase_admin
 from dependencies import get_ai_service, get_current_user, get_project_service, get_task_service
-from models.project import ProjectCreate, ProjectOut, ProjectRiskOut
+from models.project import ProjectCreate, ProjectOut
 from models.task import TaskOut
-from services.ai_service import AIService, calculate_project_risk
+from services.ai_service import AIService
 from services.project_service import ProjectService
 from services.task_service import TaskService
 
@@ -55,25 +52,6 @@ async def list_project_tasks(
     task_service: TaskService = Depends(get_task_service),
 ):
     return await task_service.list_tasks(project_id, str(current_user.id))
-
-
-@router.get("/{project_id}/risk", response_model=ProjectRiskOut)
-async def analyze_project_risk(
-    project_id: str,
-    current_user=Depends(get_current_user),
-    ai_service: AIService = Depends(get_ai_service),
-):
-    # Risk analysis reads the full project task set. Use the trusted service-role
-    # client to avoid RLS failures, while the service methods still enforce that
-    # the requested project belongs to the authenticated user.
-    admin_project_service = ProjectService(supabase_admin)
-    admin_task_service = TaskService(supabase_admin)
-    project, tasks = await gather(
-        admin_project_service.get_project(project_id, str(current_user.id)),
-        admin_task_service.list_tasks(project_id, str(current_user.id)),
-    )
-    calculated_risk = calculate_project_risk(project, tasks)
-    return await ai_service.analyze_project_risk(calculated_risk)
 
 
 @router.post("/{project_id}/decompose", response_model=list[TaskOut], status_code=status.HTTP_201_CREATED)
