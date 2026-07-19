@@ -39,6 +39,16 @@ VERIFICATION_EVALUATION_SYSTEM_PROMPT = (
     "score 5-10 for specific, relevant explanations. Return JSON only: {\"score\": integer}."
 )
 
+JUDGE_PITCH_SYSTEM_PROMPT = (
+    "You create a concise, confident 30-second demo-day pitch for CoSkill, a platform that turns completed "
+    "software work into verifiable proof. Return JSON only with exactly these fields:\n"
+    "  - solution: one sentence explaining what CoSkill does\n"
+    "  - impact: one sentence that naturally references the supplied user stats without inventing metrics\n"
+    "  - demo_flow: exactly 5 short, imperative click-through steps\n"
+    "  - ai_use: one sentence explaining how GPT-5.6 powers task decomposition, scoring, and verification\n"
+    "Keep the total spoken content brief enough for a 30-second presentation."
+)
+
 
 class AIService:
     def __init__(self):
@@ -135,6 +145,45 @@ class AIService:
             "improvements": data.get("improvements") or [],
             "next_skill": data.get("next_skill") or "",
             "summary": data.get("summary") or "",
+        }
+
+    async def generate_judge_pitch(self, stats: dict) -> dict:
+        response = await self._json_completion(
+            JUDGE_PITCH_SYSTEM_PROMPT,
+            "CoSkill presenter statistics:\n"
+            f"- Projects tracked: {stats['total_projects']}\n"
+            f"- Tasks tracked: {stats['total_tasks']}\n"
+            f"- Tasks completed: {stats['completed_tasks']}\n"
+            f"- Skills tracked: {stats['skills_tracked']}\n",
+        )
+
+        def required_text(key: str) -> str:
+            value = response.get(key)
+            if not isinstance(value, str) or not value.strip():
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"OpenAI returned an invalid judge-pitch {key}.",
+                )
+            return value.strip()
+
+        demo_flow = response.get("demo_flow")
+        if not isinstance(demo_flow, list):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="OpenAI returned an invalid judge-pitch demo flow.",
+            )
+        demo_flow = [step.strip() for step in demo_flow if isinstance(step, str) and step.strip()][:5]
+        if len(demo_flow) != 5:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="OpenAI returned an incomplete judge-pitch demo flow.",
+            )
+
+        return {
+            "solution": required_text("solution"),
+            "impact": required_text("impact"),
+            "demo_flow": demo_flow,
+            "ai_use": required_text("ai_use"),
         }
 
     async def generate_verification_question(self, title: str, description: str | None) -> str:

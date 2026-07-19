@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from dependencies import get_current_user, get_performance_service, get_ai_service
-from models.performance import PerformanceSummaryOut, ScoreRequest, ScoreOut, InsightsOut
+from models.performance import PerformanceSummaryOut, ScoreRequest, ScoreOut, InsightsOut, JudgePitchOut
 from services.performance_service import PerformanceService
 from services.ai_service import AIService
 
@@ -32,3 +32,20 @@ async def get_ai_insights(
     ai_service: AIService = Depends(get_ai_service),
 ):
     return await perf_service.get_insights(str(current_user.id), ai_service)
+
+
+@router.post("/judge-pitch", response_model=JudgePitchOut)
+async def generate_judge_pitch(
+    current_user=Depends(get_current_user),
+    perf_service: PerformanceService = Depends(get_performance_service),
+    ai_service: AIService = Depends(get_ai_service),
+):
+    summary = await perf_service.get_summary(str(current_user.id))
+    stats = {
+        "total_projects": summary["total_projects"],
+        "total_tasks": summary["total_tasks"],
+        "completed_tasks": summary["completed_tasks"],
+        "skills_tracked": len(summary["skill_scores"]),
+    }
+    pitch = await ai_service.generate_judge_pitch(stats)
+    return {**pitch, **stats}

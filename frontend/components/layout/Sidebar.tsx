@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import JudgeMode from "@/components/dashboard/JudgeMode";
 
 const navItems = [
   {
@@ -178,6 +179,9 @@ export default function Sidebar() {
 
       {/* User section */}
       <div style={{ padding: "12px 10px", borderTop: "1px solid rgba(255,255,255,0.055)" }}>
+        <div style={{ marginBottom: "8px" }}>
+          <JudgeMode />
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", marginBottom: "4px" }}>
           {/* Avatar with gradient border */}
           <div

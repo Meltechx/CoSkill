@@ -197,8 +197,23 @@ export interface PerformanceInsights {
   summary: string;
 }
 
+export interface JudgePitch {
+  solution: string;
+  impact: string;
+  demo_flow: string[];
+  ai_use: string;
+  total_projects: number;
+  total_tasks: number;
+  completed_tasks: number;
+  skills_tracked: number;
+}
+
 export const insights = {
   get: (token: string) => api<PerformanceInsights>("/api/performance/insights", { token }),
+};
+
+export const judge = {
+  pitch: (token: string) => api<JudgePitch>("/api/performance/judge-pitch", { method: "POST", token }),
 };
 
 export interface PublicProfile {

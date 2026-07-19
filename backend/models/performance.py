@@ -45,3 +45,14 @@ class InsightsOut(BaseModel):
     improvements: list[str]
     next_skill: str
     summary: str
+
+
+class JudgePitchOut(BaseModel):
+    solution: str
+    impact: str
+    demo_flow: list[str]
+    ai_use: str
+    total_projects: int
+    total_tasks: int
+    completed_tasks: int
+    skills_tracked: int
