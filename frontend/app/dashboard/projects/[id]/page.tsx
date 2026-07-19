@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { projects as projectsApi, Project, Task } from "@/lib/api";
+import { projects as projectsApi, Project, ProjectRisk, Task } from "@/lib/api";
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -42,6 +42,24 @@ const PROJECT_STATUS = {
   paused:    { label: "Paused",    color: "#fbbf24", bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.2)" },
   archived:  { label: "Archived",  color: "rgba(255,255,255,0.35)", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)" },
 };
+
+const RISK_LEVEL = {
+  low: { label: "Low risk", color: "#4ade80", bg: "rgba(34,197,94,0.1)", border: "rgba(34,197,94,0.22)" },
+  medium: { label: "Medium risk", color: "#fbbf24", bg: "rgba(251,191,36,0.1)", border: "rgba(251,191,36,0.22)" },
+  high: { label: "High risk", color: "#fb923c", bg: "rgba(251,146,60,0.1)", border: "rgba(251,146,60,0.22)" },
+  critical: { label: "Critical risk", color: "#f87171", bg: "rgba(239,68,68,0.1)", border: "rgba(239,68,68,0.22)" },
+};
+
+const RISK_CATEGORIES: Array<{
+  key: keyof ProjectRisk["category_scores"];
+  label: string;
+  detail: string;
+}> = [
+  { key: "schedule", label: "Schedule Risk", detail: "Overdue work and time pressure" },
+  { key: "task", label: "Task Risk", detail: "Unstarted hard and expert work" },
+  { key: "activity", label: "Activity Risk", detail: "Completion momentum over 3 days" },
+  { key: "quality", label: "Quality Risk", detail: "Tasks flagged for review" },
+];
 
 /* ── Spinner ──────────────────────────────────────────────────────────── */
 function Spinner({ size = 16, color = "white" }: { size?: number; color?: string }) {
@@ -332,6 +350,8 @@ export default function ProjectDetailPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [decomposing, setDecomposing] = useState(false);
+  const [risk, setRisk] = useState<ProjectRisk | null>(null);
+  const [riskLoading, setRiskLoading] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
 
@@ -345,6 +365,13 @@ export default function ProjectDetailPage() {
         ]);
         setProject(proj);
         setTasks(taskList);
+
+        // Fetch risk analysis in background after main data loads
+        setRiskLoading(true);
+        projectsApi.risk(projectId, token)
+          .then((r) => setRisk(r))
+          .catch(() => {}) // non-critical
+          .finally(() => setRiskLoading(false));
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load project");
       } finally {
@@ -559,6 +586,93 @@ export default function ProjectDetailPage() {
             {error}
           </div>
         )}
+
+        {/* ── Risk analysis ────────────────────────────────────── */}
+        {riskLoading && !risk && (
+          <section style={{ marginBottom: "24px", padding: "20px 22px", borderRadius: "14px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+              <Spinner size={14} color="#fbbf24" />
+              <p style={{ margin: 0, fontSize: "13px", color: "rgba(255,255,255,0.45)" }}>Analyzing delivery risk…</p>
+            </div>
+            <div style={{ display: "flex", gap: "12px" }}>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} style={{ flex: 1, height: "60px", borderRadius: "10px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }} />
+              ))}
+            </div>
+          </section>
+        )}
+        {risk && (() => {
+          const level = RISK_LEVEL[risk.risk_level];
+          const score = Math.max(0, Math.min(100, risk.overall_score));
+          return (
+            <section style={{ marginBottom: "24px", padding: "20px 22px", borderRadius: "14px", background: "rgba(255,255,255,0.025)", border: `1px solid ${level.border}` }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "20px", marginBottom: "22px", flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: "240px" }}>
+                  <p style={{ margin: "0 0 5px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>Explainable risk prediction</p>
+                  <h2 style={{ margin: "0 0 10px", fontSize: "18px", letterSpacing: "-0.025em" }}>Delivery risk assessment</h2>
+                  <p style={{ margin: 0, maxWidth: "540px", color: "rgba(255,255,255,0.78)", fontSize: "15px", fontWeight: 600, lineHeight: 1.55 }}>
+                    {risk.summary}
+                  </p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "11px", flexShrink: 0 }}>
+                  <div
+                    aria-label={`${score} out of 100 delivery risk`}
+                    style={{ width: "78px", height: "78px", padding: "5px", borderRadius: "50%", background: `conic-gradient(${level.color} ${score * 3.6}deg, rgba(255,255,255,0.09) 0deg)`, boxShadow: `0 0 22px ${level.color}33` }}
+                  >
+                    <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: "#101010", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                      <strong style={{ color: level.color, fontSize: "21px", letterSpacing: "-0.05em", lineHeight: 1 }}>{score}</strong>
+                      <span style={{ color: "rgba(255,255,255,0.35)", fontSize: "9px", fontWeight: 700, marginTop: "3px" }}>/ 100</span>
+                    </div>
+                  </div>
+                  <span style={{ padding: "5px 9px", borderRadius: "7px", background: level.bg, border: `1px solid ${level.border}`, color: level.color, fontSize: "11px", fontWeight: 700 }}>{level.label}</span>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px", marginBottom: "22px" }}>
+                {RISK_CATEGORIES.map((category) => {
+                  const categoryScore = Math.max(0, Math.min(100, risk.category_scores[category.key] ?? 0));
+                  return (
+                    <div key={category.key} style={{ padding: "13px", borderRadius: "10px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "baseline", marginBottom: "4px" }}>
+                        <span style={{ color: "rgba(255,255,255,0.78)", fontSize: "12px", fontWeight: 700 }}>{category.label}</span>
+                        <strong style={{ color: level.color, fontSize: "13px" }}>{categoryScore}</strong>
+                      </div>
+                      <p style={{ margin: "0 0 9px", color: "rgba(255,255,255,0.35)", fontSize: "10px", lineHeight: 1.4 }}>{category.detail}</p>
+                      <div style={{ height: "5px", borderRadius: "99px", overflow: "hidden", background: "rgba(255,255,255,0.08)" }}>
+                        <div style={{ width: `${categoryScore}%`, height: "100%", borderRadius: "inherit", background: level.color, boxShadow: `0 0 8px ${level.color}99`, transition: "width 0.5s ease" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "20px" }}>
+                <div>
+                  <p style={{ margin: "0 0 9px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "#fbbf24" }}>Why this score</p>
+                  <ul style={{ display: "flex", flexDirection: "column", gap: "8px", padding: 0, margin: 0, listStyle: "none" }}>
+                    {risk.reasons.map((reason, index) => (
+                      <li key={`${reason}-${index}`} style={{ display: "flex", gap: "8px", color: "rgba(255,255,255,0.65)", fontSize: "13px", lineHeight: 1.45 }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: "2px" }}><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                        {reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p style={{ margin: "0 0 9px", fontSize: "11px", fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "#60a5fa" }}>Recommended next actions</p>
+                  <ul style={{ display: "flex", flexDirection: "column", gap: "8px", padding: 0, margin: 0, listStyle: "none" }}>
+                    {risk.recommendations.map((recommendation, index) => (
+                      <li key={`${recommendation}-${index}`} style={{ display: "flex", gap: "9px", alignItems: "flex-start", color: "rgba(255,255,255,0.72)", fontSize: "13px", lineHeight: 1.45 }}>
+                        <input aria-label={`Mark recommendation ${index + 1} complete`} type="checkbox" style={{ accentColor: "#60a5fa", width: "14px", height: "14px", margin: "2px 0 0", flexShrink: 0, cursor: "pointer" }} />
+                        <span>{recommendation}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ── Stats bar ─────────────────────────────────────────── */}
         {totalTasks > 0 && (

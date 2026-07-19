@@ -81,6 +81,20 @@ export interface Project {
   created_at: string;
 }
 
+export interface ProjectRisk {
+  overall_score: number;
+  risk_level: "low" | "medium" | "high" | "critical";
+  category_scores: {
+    schedule: number;
+    task: number;
+    activity: number;
+    quality: number;
+  };
+  reasons: string[];
+  recommendations: string[];
+  summary: string;
+}
+
 export interface Task {
   id: string;
   project_id: string;
@@ -119,6 +133,9 @@ export const projects = {
 
   tasks: (id: string, token: string) =>
     api<Task[]>(`/api/projects/${id}/tasks`, { token }),
+
+  risk: (id: string, token: string) =>
+    api<ProjectRisk>(`/api/projects/${id}/risk`, { token }),
 
   decompose: (id: string, token: string) =>
     api<Task[]>(`/api/projects/${id}/decompose`, { method: "POST", token }),
