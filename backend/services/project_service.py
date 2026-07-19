@@ -44,7 +44,6 @@ class ProjectService:
             .select("*")
             .eq("id", project_id)
             .eq("user_id", user_id)
-            .single()
             .execute()
         )
         if not response.data:
@@ -52,7 +51,7 @@ class ProjectService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Project not found.",
             )
-        return response.data
+        return response.data[0]
 
     async def delete_project(self, project_id: str, user_id: str) -> None:
         # Verify ownership before deleting
