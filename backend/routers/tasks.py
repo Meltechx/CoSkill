@@ -63,16 +63,16 @@ async def complete_task(
                 f"File: {f.filename} ({f.content_type or 'unknown'}, {len(content)} bytes) — binary file, no content preview"
             )
 
-    relevant = await ai_service.analyze_file_relevance(
+    review = await ai_service.analyze_file_relevance(
         task_data["title"], task_data.get("description"), file_summaries
     )
-    if not relevant:
+    if not review["relevant"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Your uploaded files don't seem related to this task. Please upload relevant proof of your work.",
         )
 
-    task = await task_service.complete_task(task_id, str(current_user.id))
+    task = await task_service.complete_task(task_id, str(current_user.id), review)
     try:
         await perf_service.score_task(task_id, str(current_user.id))
     except Exception as e:

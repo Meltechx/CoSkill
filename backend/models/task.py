@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 from enum import Enum
@@ -60,6 +60,9 @@ class TaskOut(BaseModel):
     flag_reason: Optional[str] = None
     verification_question: Optional[str] = None
     verification_answer: Optional[str] = None
+    quality_score: Optional[int] = None
+    issues: list[str] = Field(default_factory=list)
+    suggestions: list[str] = Field(default_factory=list)
 
     class Config:
         from_attributes = True

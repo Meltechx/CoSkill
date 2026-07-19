@@ -61,7 +61,7 @@ class TaskService:
         )
         return response.data or []
 
-    async def complete_task(self, task_id: str, user_id: str) -> dict:
+    async def complete_task(self, task_id: str, user_id: str, review: dict) -> dict:
         task = await self._get_task_with_ownership(task_id, user_id)
 
         if task["status"] == "completed":
@@ -90,6 +90,9 @@ class TaskService:
             "flag_reason": "Completed unusually fast" if is_flagged else None,
             "verification_question": None,
             "verification_answer": None,
+            "quality_score": review["quality_score"],
+            "issues": review["issues"],
+            "suggestions": review["suggestions"],
         }
         response = (
             self.client.table("tasks")

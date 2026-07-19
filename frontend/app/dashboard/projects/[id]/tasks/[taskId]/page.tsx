@@ -260,6 +260,11 @@ export default function TaskDetailPage() {
   const stat = STATUS[effectiveStatus] ?? STATUS.todo;
   const isDone = task?.status === "completed";
   const isStarted = !!task?.started_at;
+  const qualityColor = (task?.quality_score ?? 0) >= 80
+    ? "#4ade80"
+    : (task?.quality_score ?? 0) >= 60
+    ? "#fbbf24"
+    : "#f87171";
 
   /* ── Loading ── */
   if (loading) {
@@ -490,6 +495,61 @@ export default function TaskDetailPage() {
                 {task.description || "No description provided for this task."}
               </p>
             </div>
+
+            {/* Code review */}
+            {isDone && task.quality_score != null && (
+              <div style={{
+                padding: "24px 26px", borderRadius: 16,
+                background: "rgba(59,130,246,0.035)", border: "1px solid rgba(59,130,246,0.16)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
+                  <div>
+                    <h2 style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)", marginBottom: 5 }}>
+                      Code review
+                    </h2>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>AI review of your submitted work</p>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <p style={{ fontSize: 26, lineHeight: 1, fontWeight: 800, letterSpacing: "-0.04em", color: qualityColor }}>
+                      {task.quality_score}<span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>/100</span>
+                    </p>
+                    <p style={{ marginTop: 4, fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "rgba(255,255,255,0.3)" }}>Quality score</p>
+                  </div>
+                </div>
+
+                {task.issues.length > 0 && (
+                  <div style={{ marginBottom: task.suggestions.length > 0 ? 18 : 0 }}>
+                    <p style={{ marginBottom: 9, fontSize: 11, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "#fbbf24" }}>Issues found</p>
+                    <ul style={{ display: "flex", flexDirection: "column", gap: 8, padding: 0, margin: 0, listStyle: "none" }}>
+                      {task.issues.map((issue, index) => (
+                        <li key={`${issue}-${index}`} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,0.67)" }}>
+                          <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                            <path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+                          </svg>
+                          {issue}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {task.suggestions.length > 0 && (
+                  <div>
+                    <p style={{ marginBottom: 9, fontSize: 11, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase", color: "#60a5fa" }}>Suggestions</p>
+                    <ul style={{ display: "flex", flexDirection: "column", gap: 8, padding: 0, margin: 0, listStyle: "none" }}>
+                      {task.suggestions.map((suggestion, index) => (
+                        <li key={`${suggestion}-${index}`} style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 13, lineHeight: 1.5, color: "rgba(255,255,255,0.67)" }}>
+                          <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                            <path d="M9 18h6" /><path d="M10 22h4" /><path d="M12 2a7 7 0 0 0-4 12.75c.64.46 1 1.2 1 1.99V17h6v-.26c0-.79.36-1.53 1-1.99A7 7 0 0 0 12 2Z" />
+                          </svg>
+                          {suggestion}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Start task (if not started) */}
             {!isStarted && !isDone && (

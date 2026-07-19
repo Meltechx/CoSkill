@@ -198,16 +198,22 @@ class AIService:
         title: str,
         description: str | None,
         file_summaries: list[str],
-    ) -> bool:
+    ) -> dict:
         system_prompt = (
-            "You verify whether uploaded files are relevant proof of work for a software task.\n\n"
+            "You verify uploaded files as proof of work for a software task and, when appropriate, review their code.\n\n"
             "For text files (code, config, docs) you will receive the first 1000 characters of content — "
             "read the actual code/text and judge whether it plausibly relates to the task.\n"
             "For binary files (images, archives) you only have the filename — judge by name and type.\n\n"
             "A file is relevant if its content, structure, or name reasonably relates to the task's subject, "
             "technologies, or deliverables. Be lenient — screenshots, test outputs, configs, and partial "
             "implementations all count as valid proof.\n\n"
-            "Return JSON only: {\"relevant\": true/false, \"reason\": \"one sentence explanation\"}"
+            "If the files are relevant, perform a concise code review of the text content provided. Identify up to "
+            "3 concrete bugs or code-quality issues and up to 2 actionable improvements. Do not invent issues for "
+            "binary files, screenshots, or content that is not available. Give a quality_score from 0 to 100.\n\n"
+            "Return JSON only with exactly these fields: "
+            "{\"relevant\": true/false, \"reason\": \"one sentence explanation\", "
+            "\"quality_score\": 0-100, \"issues\": [\"issue\"], \"suggestions\": [\"suggestion\"]}. "
+            "When files are not relevant, set quality_score to 0 and issues and suggestions to empty arrays."
         )
         files_text = "\n\n".join(f"--- {i+1}. {s}" for i, s in enumerate(file_summaries))
         user_message = (
@@ -216,7 +222,28 @@ class AIService:
             f"Uploaded files:\n\n{files_text}"
         )
         result = await self._json_completion(system_prompt, user_message)
-        return bool(result.get("relevant", False))
+        relevant = result.get("relevant") is True
+
+        quality_score = result.get("quality_score", 0)
+        try:
+            quality_score = max(0, min(100, int(quality_score)))
+        except (TypeError, ValueError):
+            quality_score = 0
+
+        def string_list(value: object, limit: int) -> list[str]:
+            if not isinstance(value, list):
+                return []
+            return [item.strip() for item in value if isinstance(item, str) and item.strip()][:limit]
+
+        return {
+            "relevant": relevant,
+            "reason": result.get("reason", "Unable to determine file relevance.")
+            if isinstance(result.get("reason"), str)
+            else "Unable to determine file relevance.",
+            "quality_score": quality_score if relevant else 0,
+            "issues": string_list(result.get("issues"), 3) if relevant else [],
+            "suggestions": string_list(result.get("suggestions"), 2) if relevant else [],
+        }
 
     async def _json_completion(self, system_prompt: str, user_message: str) -> dict:
         try:

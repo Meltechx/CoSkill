@@ -99,6 +99,9 @@ export interface Task {
   flag_reason: string | null;
   verification_question: string | null;
   verification_answer: string | null;
+  quality_score: number | null;
+  issues: string[];
+  suggestions: string[];
 }
 
 export const projects = {
