@@ -104,6 +104,12 @@ export default function PublicProfilePage() {
         </div>
       </section>
 
+      <section className="public-profile-card" style={{ padding: 20, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "baseline", marginBottom: 14 }}><h2 style={{ margin: 0, fontSize: 17 }}>Recruiter-ready achievements</h2><span style={{ color: "#c084fc", fontSize: 11, fontWeight: 800, letterSpacing: ".08em" }}>PUBLIC SIGNALS</span></div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, marginBottom: 16 }}>{[["Level", profile.level], ["Total XP", profile.total_xp.toLocaleString()], ["Completion", `${profile.completion_rate}%`], ["Sprint success", `${profile.sprint_success_rate}%`], ["Streak", `${profile.current_streak} days`], ["Favorite skill", profile.favorite_skill || "Building"]].map(([label, value]) => <div key={String(label)} style={{ padding: 12, borderRadius: 11, background: "rgba(255,255,255,.035)", border: "1px solid rgba(255,255,255,.06)" }}><strong style={{ display: "block", fontSize: 17 }}>{value}</strong><span style={{ color: "rgba(255,255,255,.42)", fontSize: 11 }}>{label}</span></div>)}</div>
+        {profile.unlocked_badges.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{profile.unlocked_badges.map((badge) => <span key={badge.id} title={badge.description} style={{ padding: "6px 9px", borderRadius: 999, background: "rgba(251,191,36,.1)", border: "1px solid rgba(251,191,36,.2)", color: "#fde68a", fontSize: 11 }}>{badge.icon} {badge.title}</span>)}</div>}
+      </section>
+
       <section className="public-profile-card" style={{ padding: 24 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, marginBottom: 24 }}>
           <h2 style={{ margin: 0, fontSize: 17 }}>Skill profile</h2>

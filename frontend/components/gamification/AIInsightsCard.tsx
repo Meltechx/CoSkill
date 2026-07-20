@@ -1,0 +1,5 @@
+import { PerformanceInsights } from "@/lib/api";
+
+export default function AIInsightsCard({ insights }: { insights: PerformanceInsights | null }) {
+  return <section className="gamification-card" style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.1), rgba(168,85,247,0.08))", borderColor: "rgba(96,165,250,0.18)" }}><p style={{ margin: 0, color: "#93c5fd", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>AI Performance Summary</p><h2 style={{ marginTop: 6 }}>Your momentum, explained</h2>{insights ? <><p style={{ color: "rgba(255,255,255,0.68)", fontSize: 13, lineHeight: 1.55 }}>{insights.summary}</p><div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>{insights.strengths.map((strength) => <span key={strength} style={{ padding: "5px 8px", borderRadius: 999, background: "rgba(34,197,94,0.1)", color: "#86efac", fontSize: 11 }}>{strength}</span>)}</div></> : <p className="muted-copy">Generate AI insights from the Insights page to see personalized productivity signals.</p>}</section>;
+}

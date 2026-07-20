@@ -1,0 +1,8 @@
+import { LeaderboardEntry } from "@/lib/api";
+
+export default function Leaderboard({ entries }: { entries: LeaderboardEntry[] }) {
+  return <section className="gamification-card"><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "baseline" }}><h2>Leaderboard</h2><span style={{ color: "#c084fc", fontSize: 11, fontWeight: 700 }}>DEMO MODE</span></div><div style={{ display: "grid", gap: 8 }}>{entries.map((entry) => {
+    const initials = entry.full_name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+    return <div key={entry.id} style={{ display: "grid", gridTemplateColumns: "28px 32px 1fr auto", gap: 10, alignItems: "center", padding: "9px 0", borderBottom: "1px solid rgba(255,255,255,0.055)" }}><strong style={{ color: entry.rank <= 3 ? "#fbbf24" : "rgba(255,255,255,0.42)" }}>#{entry.rank}</strong><div aria-label={`${entry.full_name}'s avatar`} style={{ width: 30, height: 30, display: "grid", placeItems: "center", overflow: "hidden", borderRadius: "50%", background: "linear-gradient(135deg, #a855f7, #3b82f6)", color: "white", fontSize: 10, fontWeight: 800 }}>{entry.avatar_url ? <img src={entry.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : initials}</div><div><strong style={{ fontSize: 12 }}>{entry.full_name}</strong><p style={{ margin: "2px 0 0", color: "rgba(255,255,255,0.38)", fontSize: 10 }}>Level {entry.level} · {entry.completion_rate}% complete · {entry.badges.map((badge) => badge.icon).join(" ")}</p></div><strong style={{ color: "#bfdbfe", fontSize: 12 }}>{entry.xp.toLocaleString()} XP</strong></div>;
+  })}</div></section>;
+}

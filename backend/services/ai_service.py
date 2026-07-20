@@ -49,6 +49,22 @@ JUDGE_PITCH_SYSTEM_PROMPT = (
     "Keep the total spoken content brief enough for a 30-second presentation."
 )
 
+SPRINT_PLANNER_SYSTEM_PROMPT = (
+    "You are an expert software delivery lead. Create a practical sprint plan using only the supplied incomplete "
+    "project tasks. Return JSON only with exactly these fields:\n"
+    "  - sprint_goal: one concise outcome for the sprint\n"
+    "  - risk_level: one of low, medium, high\n"
+    "  - risk_reason: one concise explanation for the risk level\n"
+    "  - completion_probability: an integer from 0 to 100\n"
+    "  - recommendations: an array of 3-5 specific, imperative recommendations\n"
+    "  - phases: an ordered array of 2-5 phases, each with time_range, focus, and tasks\n"
+    "Each task item must include task_id, title, assignee, estimated_hours, priority, ai_reason, depends_on, and blocks. "
+    "priority must be critical, high, medium, or low. ai_reason concisely explains why the task is placed in that phase. "
+    "depends_on and blocks must be arrays of supplied task titles only. Use only supplied task IDs and titles, assign "
+    "work evenly across Team member 1 through the supplied team size, and keep every time range within the sprint "
+    "duration. Do not invent tasks or dependencies."
+)
+
 class AIService:
     def __init__(self):
         if not settings.OPENAI_API_KEY:
@@ -93,6 +109,107 @@ class AIService:
             )
 
         return [self._validate_task(t, i) for i, t in enumerate(tasks)]
+
+    async def plan_sprint(
+        self,
+        project: dict,
+        tasks: list[dict],
+        duration_hours: float,
+        team_size: int,
+    ) -> dict:
+        open_tasks = [task for task in tasks if task.get("status") not in {"completed", "cancelled"}]
+        if not open_tasks:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Add incomplete tasks before planning a sprint.")
+
+        task_lines = "\n".join(
+            f"- ID: {task['id']} | title: {task['title']} | difficulty: {task.get('difficulty', 'medium')} | "
+            f"estimate: {task.get('estimated_hours') or 'unspecified'} hours | description: {task.get('description') or 'None'}"
+            for task in open_tasks
+        )
+        response = await self._json_completion(
+            SPRINT_PLANNER_SYSTEM_PROMPT,
+            f"Project: {project['title']}\nGoal: {project.get('goal') or project.get('description') or project['title']}\n"
+            f"Sprint duration: {duration_hours:g} hours\nTeam size: {team_size}\nIncomplete tasks:\n{task_lines}",
+        )
+
+        task_by_id = {str(task["id"]): task for task in open_tasks}
+        task_titles = {str(task["title"]) for task in open_tasks}
+        phases = []
+        raw_phases = response.get("phases")
+        for phase in raw_phases if isinstance(raw_phases, list) else []:
+            if not isinstance(phase, dict):
+                continue
+            assignments = []
+            raw_assignments = phase.get("tasks")
+            for item in raw_assignments if isinstance(raw_assignments, list) else []:
+                if not isinstance(item, dict) or str(item.get("task_id")) not in task_by_id:
+                    continue
+                task = task_by_id[str(item["task_id"])]
+                try:
+                    estimated_hours = max(0.25, float(item.get("estimated_hours") or task.get("estimated_hours") or 1))
+                except (TypeError, ValueError):
+                    estimated_hours = 1.0
+                assignee = item.get("assignee")
+                assignee = assignee.strip() if isinstance(assignee, str) and assignee.strip() else "Team member 1"
+                priority = item.get("priority")
+                priority = priority if priority in {"critical", "high", "medium", "low"} else "medium"
+                ai_reason = item.get("ai_reason")
+                ai_reason = ai_reason.strip() if isinstance(ai_reason, str) and ai_reason.strip() else "Scheduled to keep the sprint moving."
+
+                def related_titles(key: str) -> list[str]:
+                    value = item.get(key)
+                    if not isinstance(value, list):
+                        return []
+                    return [title for title in value if isinstance(title, str) and title in task_titles and title != task["title"]][:6]
+
+                assignments.append({
+                    "task_id": str(task["id"]),
+                    "title": task["title"],
+                    "assignee": assignee,
+                    "estimated_hours": estimated_hours,
+                    "priority": priority,
+                    "ai_reason": ai_reason,
+                    "depends_on": related_titles("depends_on"),
+                    "blocks": related_titles("blocks"),
+                })
+            if assignments:
+                time_range = phase.get("time_range")
+                focus = phase.get("focus")
+                phases.append({
+                    "time_range": time_range.strip() if isinstance(time_range, str) and time_range.strip() else "Sprint block",
+                    "focus": focus.strip() if isinstance(focus, str) and focus.strip() else "Complete planned work",
+                    "tasks": assignments,
+                })
+
+        if not phases:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="OpenAI returned an incomplete sprint plan.")
+        risk_level = response.get("risk_level")
+        risk_level = risk_level if risk_level in {"low", "medium", "high"} else "medium"
+        risk_reason = response.get("risk_reason")
+        risk_reason = risk_reason.strip() if isinstance(risk_reason, str) and risk_reason.strip() else "The plan needs active monitoring as work progresses."
+        try:
+            completion_probability = max(0, min(100, int(response.get("completion_probability"))))
+        except (TypeError, ValueError):
+            completion_probability = 70
+        recommendations = response.get("recommendations")
+        recommendations = [item.strip() for item in recommendations if isinstance(item, str) and item.strip()][:5] if isinstance(recommendations, list) else []
+        fallback_recommendations = [
+            "Start critical-path work first and resolve blockers immediately.",
+            "Check progress at the end of every sprint phase.",
+            "Keep one team member available to unblock dependent work.",
+        ]
+        for recommendation in fallback_recommendations:
+            if len(recommendations) >= 3:
+                break
+            recommendations.append(recommendation)
+        return {
+            "sprint_goal": response.get("sprint_goal").strip() if isinstance(response.get("sprint_goal"), str) and response.get("sprint_goal").strip() else project["title"],
+            "risk_level": risk_level,
+            "risk_reason": risk_reason,
+            "completion_probability": completion_probability,
+            "recommendations": recommendations,
+            "phases": phases,
+        }
 
     async def generate_insights(
         self,

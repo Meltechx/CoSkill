@@ -1,0 +1,5 @@
+import { Badge } from "@/lib/api";
+
+export default function AchievementTimeline({ achievements }: { achievements: Badge[] }) {
+  return <section className="gamification-card"><h2>Achievement timeline</h2>{achievements.length ? <div style={{ display: "grid", gap: 12 }}>{achievements.map((badge, index) => <div key={badge.id} style={{ display: "grid", gridTemplateColumns: "26px 1fr", gap: 10 }}><div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}><span style={{ width: 24, height: 24, display: "grid", placeItems: "center", borderRadius: "50%", background: "rgba(251,191,36,0.12)" }}>{badge.icon}</span>{index < achievements.length - 1 && <span style={{ width: 1, flex: 1, marginTop: 5, background: "rgba(251,191,36,0.22)" }} />}</div><div><strong style={{ fontSize: 13 }}>{badge.title}</strong><p style={{ margin: "3px 0 0", color: "rgba(255,255,255,0.4)", fontSize: 11 }}>{badge.unlock_date ? new Date(badge.unlock_date).toLocaleDateString() : "Recently unlocked"}</p></div></div>)}</div> : <p className="muted-copy">Unlock achievements by building momentum.</p>}</section>;
+}

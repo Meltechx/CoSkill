@@ -1,0 +1,3 @@
+export default function StreakCard({ streak }: { streak: number }) {
+  return <section className="gamification-card" style={{ background: "linear-gradient(135deg, rgba(249,115,22,0.12), rgba(239,68,68,0.06))", borderColor: "rgba(251,146,60,0.18)" }}><span style={{ fontSize: 26 }}>🔥</span><p style={{ margin: "7px 0 3px", color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" }}>Current streak</p><strong style={{ fontSize: 24 }}>{streak} Day{streak === 1 ? "" : "s"}</strong><p className="muted-copy" style={{ marginBottom: 0 }}>Stay active today to protect it.</p></section>;
+}

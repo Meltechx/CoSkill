@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import JudgeMode from "@/components/dashboard/JudgeMode";
+import XPCard from "@/components/gamification/XPCard";
+import { users, XpStatus } from "@/lib/api";
 
 const navItems = [
   {
@@ -46,6 +49,13 @@ const navItems = [
     ),
   },
   {
+    label: "Achievements",
+    href: "/dashboard/gamification",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" /><path d="M7 6H4v2a4 4 0 0 0 4 4" /><path d="M17 6h3v2a4 4 0 0 1-4 4" /></svg>
+    ),
+  },
+  {
     label: "Profile",
     href: "/dashboard/profile",
     icon: (
@@ -58,7 +68,43 @@ const navItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
+  const [xpStatus, setXpStatus] = useState<XpStatus | null>(null);
+  const [xpGain, setXpGain] = useState<number | null>(null);
+  const previousXp = useRef<number | null>(null);
+
+  useEffect(() => {
+    console.log("[XP] token:", token);
+    console.log("[XP] user:", user);
+    if (!token) return;
+    const loadXp = () => users.xp(token).then((response) => {
+      console.log("[XP] API response:", response);
+      setXpStatus(response);
+    }).catch(() => {});
+    loadXp();
+    const refresh = window.setInterval(loadXp, 30_000);
+    const handleXpUpdate = (event: Event) => setXpStatus((event as CustomEvent<XpStatus>).detail);
+    window.addEventListener("xp:updated", handleXpUpdate);
+    return () => {
+      window.clearInterval(refresh);
+      window.removeEventListener("xp:updated", handleXpUpdate);
+    };
+  }, [token]);
+
+  useEffect(() => {
+    console.log("[XP] state updated:", xpStatus);
+  }, [xpStatus]);
+
+  useEffect(() => {
+    if (!xpStatus) return;
+    if (previousXp.current !== null && xpStatus.xp > previousXp.current) {
+      setXpGain(xpStatus.xp - previousXp.current);
+      const timeout = window.setTimeout(() => setXpGain(null), 2200);
+      previousXp.current = xpStatus.xp;
+      return () => window.clearTimeout(timeout);
+    }
+    previousXp.current = xpStatus.xp;
+  }, [xpStatus]);
 
   const initial = (user?.full_name?.[0] || user?.email?.[0] || "?").toUpperCase();
 
@@ -211,14 +257,23 @@ export default function Sidebar() {
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: "13px", fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {user?.full_name || "User"}
-            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <p style={{ fontSize: "13px", fontWeight: 600, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {user?.full_name || "User"}
+              </p>
+              {xpStatus && (
+                <span style={{ flexShrink: 0, padding: "2px 6px", borderRadius: "999px", background: "rgba(168,85,247,0.16)", border: "1px solid rgba(168,85,247,0.3)", color: "#d8b4fe", fontSize: "10px", fontWeight: 800 }}>
+                  Lv. {xpStatus.level}
+                </span>
+              )}
+            </div>
             <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.32)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {user?.email}
             </p>
           </div>
         </div>
+
+        {xpStatus && <div style={{ position: "relative", padding: "2px 10px 10px" }}><XPCard status={xpStatus} compact />{xpGain && <span className="sidebar-xp-gain">+{xpGain} XP</span>}</div>}
 
         <button
           onClick={() => logout()}

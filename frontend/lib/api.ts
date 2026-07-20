@@ -81,6 +81,32 @@ export interface Project {
   created_at: string;
 }
 
+export interface SprintTaskAssignment {
+  task_id: string;
+  title: string;
+  assignee: string;
+  estimated_hours: number;
+  priority: "critical" | "high" | "medium" | "low";
+  ai_reason: string;
+  depends_on: string[];
+  blocks: string[];
+}
+
+export interface SprintPhase {
+  time_range: string;
+  focus: string;
+  tasks: SprintTaskAssignment[];
+}
+
+export interface SprintPlan {
+  phases: SprintPhase[];
+  sprint_goal: string;
+  risk_level: "low" | "medium" | "high";
+  risk_reason: string;
+  completion_probability: number;
+  recommendations: string[];
+}
+
 export interface Task {
   id: string;
   project_id: string;
@@ -119,6 +145,9 @@ export const projects = {
 
   tasks: (id: string, token: string) =>
     api<Task[]>(`/api/projects/${id}/tasks`, { token }),
+
+  sprint: (id: string, data: { duration_hours: number; team_size: number }, token: string) =>
+    api<SprintPlan>(`/api/projects/${id}/sprint`, { method: "POST", body: data, token }),
 
   decompose: (id: string, token: string) =>
     api<Task[]>(`/api/projects/${id}/decompose`, { method: "POST", token }),
@@ -222,9 +251,75 @@ export interface PublicProfile {
   overall_score: number;
   total_tasks: number;
   completed_tasks: number;
+  level: number;
+  total_xp: number;
+  unlocked_badges: Badge[];
+  completion_rate: number;
+  sprint_success_rate: number;
+  favorite_skill: string | null;
+  current_streak: number;
+  recent_achievements: Badge[];
+}
+
+export interface XpStatus {
+  xp: number;
+  level: number;
+  xp_to_next_level: number;
+  badges: string[];
+  current_level_xp: number;
+  progress_percentage: number;
+}
+
+export interface Badge {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  unlock_date: string | null;
+}
+
+export interface XpActivity {
+  id: string;
+  amount: number;
+  event_type: string;
+  title: string;
+  created_at: string;
+}
+
+export interface GamificationProfile {
+  xp: number;
+  level: number;
+  current_level_xp: number;
+  xp_needed_for_next_level: number;
+  progress_percentage: number;
+  badges: Badge[];
+  recent_activity: XpActivity[];
+  current_streak: number;
+  recent_achievements: Badge[];
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  level: number;
+  xp: number;
+  badges: Badge[];
+  completion_rate: number;
 }
 
 export const users = {
+  xp: (token: string) =>
+    api<XpStatus>("/api/users/me/xp", { token }),
+
+  gamification: (token: string) =>
+    api<GamificationProfile>("/api/users/me/gamification", { token }),
+
+  leaderboard: (token: string) =>
+    api<LeaderboardEntry[]>("/api/users/leaderboard", { token }),
+
   publicProfile: (id: string) =>
     api<PublicProfile>(`/api/users/${encodeURIComponent(id)}/profile`),
 };

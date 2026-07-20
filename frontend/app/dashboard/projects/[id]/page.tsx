@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { projects as projectsApi, Project, Task } from "@/lib/api";
+import { projects as projectsApi, Project, SprintPlan, Task } from "@/lib/api";
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -41,6 +41,14 @@ const PROJECT_STATUS = {
   completed: { label: "Completed", color: "#60a5fa", bg: "rgba(59,130,246,0.08)",  border: "rgba(59,130,246,0.2)" },
   paused:    { label: "Paused",    color: "#fbbf24", bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.2)" },
   archived:  { label: "Archived",  color: "rgba(255,255,255,0.35)", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)" },
+};
+
+const SPRINT_RISK_COLOR = { low: "#4ade80", medium: "#fbbf24", high: "#fb923c" };
+const SPRINT_PRIORITY = {
+  critical: { color: "#f87171", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.28)" },
+  high: { color: "#fb923c", bg: "rgba(251,146,60,0.12)", border: "rgba(251,146,60,0.28)" },
+  medium: { color: "#fbbf24", bg: "rgba(251,191,36,0.12)", border: "rgba(251,191,36,0.28)" },
+  low: { color: "#4ade80", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.28)" },
 };
 
 /* ── Spinner ──────────────────────────────────────────────────────────── */
@@ -334,6 +342,11 @@ export default function ProjectDetailPage() {
   const [decomposing, setDecomposing] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showSprintModal, setShowSprintModal] = useState(false);
+  const [sprintDuration, setSprintDuration] = useState(16);
+  const [teamSize, setTeamSize] = useState(1);
+  const [sprintPlanning, setSprintPlanning] = useState(false);
+  const [sprintPlan, setSprintPlan] = useState<SprintPlan | null>(null);
 
   useEffect(() => {
     if (!token || !projectId) return;
@@ -380,11 +393,28 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const handlePlanSprint = async () => {
+    if (!token) return;
+    setSprintPlanning(true);
+    setError("");
+    try {
+      const plan = await projectsApi.sprint(projectId, { duration_hours: sprintDuration, team_size: teamSize }, token);
+      setSprintPlan(plan);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to plan sprint");
+    } finally {
+      setSprintPlanning(false);
+    }
+  };
+
   /* ── Derived ── */
   const completedCount = tasks.filter((t) => t.status === "completed").length;
   const totalTasks = tasks.length;
   const progressPct = totalTasks > 0 ? Math.round((completedCount / totalTasks) * 100) : 0;
   const totalHours = tasks.reduce((s, t) => s + (t.estimated_hours ?? 0), 0);
+  const sprintAssignments = sprintPlan?.phases.flatMap((phase) => phase.tasks) ?? [];
+  const sprintEstimatedHours = sprintAssignments.reduce((total, task) => total + task.estimated_hours, 0);
+  const sprintCriticalTasks = sprintAssignments.filter((task) => task.priority === "critical").length;
 
   /* ── Loading skeleton ── */
   if (loading) {
@@ -475,6 +505,13 @@ export default function ProjectDetailPage() {
 
           {/* Action buttons */}
           <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+            <button
+              onClick={() => { setSprintPlan(null); setShowSprintModal(true); }}
+              disabled={tasks.filter((task) => task.status !== "completed" && task.status !== "cancelled").length === 0}
+              style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 14px", background: "rgba(59,130,246,0.1)", border: "1px solid rgba(59,130,246,0.28)", borderRadius: "9px", color: "#93c5fd", fontSize: "13px", fontWeight: 600, cursor: "pointer", opacity: tasks.filter((task) => task.status !== "completed" && task.status !== "cancelled").length === 0 ? 0.45 : 1, whiteSpace: "nowrap" }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18" /><path d="m7 16 4-5 3 2 5-7" /></svg>
+              Plan Sprint
+            </button>
             {/* AI Decompose */}
             <button
               onClick={handleDecompose}
@@ -726,6 +763,87 @@ export default function ProjectDetailPage() {
 
 
       </div>
+      {showSprintModal && (
+        <div role="dialog" aria-modal="true" aria-label="AI sprint planner" style={{ position: "fixed", inset: 0, zIndex: 50, overflowY: "auto", display: "grid", placeItems: "center", padding: 20, background: "rgba(0,0,0,0.74)", backdropFilter: "blur(5px)" }}>
+          <div style={{ width: "min(100%, 680px)", maxHeight: "min(760px, calc(100vh - 40px))", overflowY: "auto", padding: 26, borderRadius: 18, background: "#121212", border: "1px solid rgba(59,130,246,0.25)", boxShadow: "0 30px 80px rgba(0,0,0,0.55)" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
+              <div>
+                <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "#60a5fa" }}>AI Sprint Planner</p>
+                <h2 style={{ margin: 0, fontSize: 21, color: "white", letterSpacing: "-0.03em" }}>{sprintPlan ? sprintPlan.sprint_goal : "Plan focused delivery time"}</h2>
+              </div>
+              <button onClick={() => setShowSprintModal(false)} style={{ border: "none", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 25, cursor: "pointer", lineHeight: 1 }}>&times;</button>
+            </div>
+
+            {!sprintPlan && sprintPlanning ? (
+              <div style={{ padding: "36px 12px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+                <div style={{ width: 58, height: 58, display: "grid", placeItems: "center", borderRadius: "50%", background: "linear-gradient(135deg, rgba(59,130,246,0.26), rgba(168,85,247,0.28))", border: "1px solid rgba(147,197,253,0.32)", fontSize: 25, animation: "badge-pulse 1.5s ease-in-out infinite" }}>🤖</div>
+                <div style={{ width: "min(100%, 390px)", display: "flex", flexDirection: "column", gap: 10 }}>
+                  {["🤖 Analyzing tasks...", "✓ Reviewing dependencies", "✓ Calculating workload", "✓ Building timeline"].map((step, index) => (
+                    <div key={step} className="sprint-analysis-step" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 9, color: index === 0 ? "white" : "rgba(255,255,255,0.55)", background: index === 0 ? "rgba(59,130,246,0.1)" : "rgba(255,255,255,0.025)", border: `1px solid ${index === 0 ? "rgba(59,130,246,0.25)" : "rgba(255,255,255,0.06)"}`, fontSize: 13, fontWeight: index === 0 ? 700 : 500, animationDelay: `${index * 0.22}s` }}>
+                      {index === 0 && <Spinner size={13} color="#60a5fa" />}{step}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : !sprintPlan ? (
+              <>
+                <p style={{ margin: "0 0 20px", color: "rgba(255,255,255,0.5)", fontSize: 14, lineHeight: 1.55 }}>Set the time and team capacity. The planner will turn your incomplete tasks into an assigned delivery timeline.</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 7, color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 700 }}>Duration (hours)
+                    <input type="number" min="1" max="168" value={sprintDuration} onChange={(event) => setSprintDuration(Math.max(1, Number(event.target.value) || 1))} style={{ padding: "11px 12px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "white", font: "inherit", outline: "none" }} />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 7, color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 700 }}>Team size
+                    <input type="number" min="1" max="20" value={teamSize} onChange={(event) => setTeamSize(Math.max(1, Number(event.target.value) || 1))} style={{ padding: "11px 12px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "white", font: "inherit", outline: "none" }} />
+                  </label>
+                </div>
+                <button onClick={handlePlanSprint} style={{ width: "100%", marginTop: 20, padding: "12px 16px", border: "none", borderRadius: 10, background: "linear-gradient(135deg, #2563eb, #7c3aed)", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Generate sprint timeline</button>
+              </>
+            ) : (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 9, marginBottom: 12 }}>
+                  {[
+                    { label: "Total tasks", value: sprintAssignments.length },
+                    { label: "Estimated hours", value: `${sprintEstimatedHours.toFixed(1)}h` },
+                    { label: "Critical tasks", value: sprintCriticalTasks },
+                  ].map((stat) => <div key={stat.label} style={{ padding: "12px 11px", borderRadius: 10, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)" }}><p style={{ margin: "0 0 4px", color: "rgba(255,255,255,0.36)", fontSize: 10, fontWeight: 700, letterSpacing: "0.07em", textTransform: "uppercase" }}>{stat.label}</p><strong style={{ color: "white", fontSize: 19 }}>{stat.value}</strong></div>)}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", marginBottom: sprintPlan.risk_level === "low" ? 20 : 10, borderRadius: 10, background: "rgba(255,255,255,0.035)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                  <div><p style={{ margin: "0 0 3px", color: "rgba(255,255,255,0.45)", fontSize: 12 }}>Delivery risk</p><strong style={{ color: SPRINT_RISK_COLOR[sprintPlan.risk_level], fontSize: 12, textTransform: "uppercase" }}>{sprintPlan.risk_level}</strong></div>
+                  <div style={{ textAlign: "right" }}><p style={{ margin: "0 0 3px", color: "rgba(255,255,255,0.45)", fontSize: 12 }}>Completion probability</p><strong style={{ color: "#93c5fd", fontSize: 22 }}>{sprintPlan.completion_probability}%</strong></div>
+                </div>
+                {sprintPlan.risk_level !== "low" && <p style={{ margin: "0 0 20px", padding: "10px 12px", borderRadius: 9, color: "rgba(255,255,255,0.62)", background: "rgba(251,191,36,0.055)", border: "1px solid rgba(251,191,36,0.14)", fontSize: 12, lineHeight: 1.55 }}>{sprintPlan.risk_reason}</p>}
+                <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 14 }}>
+                  {sprintPlan.phases.map((phase, index) => (
+                    <div key={`${phase.time_range}-${index}`} style={{ display: "grid", gridTemplateColumns: "28px 1fr", gap: 12 }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <div style={{ width: 12, height: 12, marginTop: 5, borderRadius: "50%", background: "linear-gradient(135deg, #a855f7, #3b82f6)", boxShadow: "0 0 10px rgba(168,85,247,0.7)" }} />
+                        {index < sprintPlan.phases.length - 1 && <div style={{ flex: 1, width: 1, marginTop: 6, background: "rgba(168,85,247,0.28)" }} />}
+                      </div>
+                      <div style={{ padding: "13px 14px", borderRadius: 11, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginBottom: 4 }}><strong style={{ color: "white", fontSize: 14 }}>{phase.focus}</strong><span style={{ color: "#93c5fd", fontSize: 11, fontWeight: 700, whiteSpace: "nowrap" }}>{phase.time_range}</span></div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 9, marginTop: 10 }}>{phase.tasks.map((task) => {
+                          const priority = SPRINT_PRIORITY[task.priority];
+                          return <div key={task.task_id} style={{ padding: "10px 11px", borderRadius: 9, background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.055)" }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}><strong style={{ color: "rgba(255,255,255,0.82)", fontSize: 12 }}>{task.title}</strong><span style={{ padding: "2px 6px", borderRadius: 5, background: priority.bg, border: `1px solid ${priority.border}`, color: priority.color, fontSize: 9, fontWeight: 800, letterSpacing: "0.05em", textTransform: "uppercase" }}>{task.priority}</span></div>
+                            <p style={{ margin: "6px 0", color: "rgba(255,255,255,0.46)", fontStyle: "italic", fontSize: 11, lineHeight: 1.45 }}>{task.ai_reason}</p>
+                            <p style={{ margin: "0 0 5px", color: "rgba(255,255,255,0.38)", fontSize: 11 }}>{task.assignee} · {task.estimated_hours}h</p>
+                            {(task.depends_on.length > 0 || task.blocks.length > 0) && <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, lineHeight: 1.4 }}>{task.depends_on.length > 0 && <span style={{ color: "#93c5fd" }}>Depends on: <span style={{ color: "rgba(255,255,255,0.48)" }}>{task.depends_on.join(", ")}</span></span>}{task.blocks.length > 0 && <span style={{ color: "#fbbf24" }}>Blocks: <span style={{ color: "rgba(255,255,255,0.48)" }}>{task.blocks.join(", ")}</span></span>}</div>}
+                          </div>;
+                        })}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 20, padding: "15px", borderRadius: 11, background: "rgba(59,130,246,0.045)", border: "1px solid rgba(59,130,246,0.14)" }}>
+                  <p style={{ margin: "0 0 9px", color: "#93c5fd", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>AI recommendations</p>
+                  <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6, color: "rgba(255,255,255,0.62)", fontSize: 12, lineHeight: 1.45 }}>{sprintPlan.recommendations.map((recommendation, index) => <li key={`${recommendation}-${index}`}>{recommendation}</li>)}</ul>
+                </div>
+                <button onClick={() => setSprintPlan(null)} style={{ width: "100%", marginTop: 20, padding: "10px", borderRadius: 9, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "rgba(255,255,255,0.68)", fontWeight: 700, cursor: "pointer" }}>Plan another sprint</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

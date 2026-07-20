@@ -1,10 +1,23 @@
 from fastapi import HTTPException, status
 from supabase import Client
 
+from services.gamification_service import GamificationService
+
 
 class UserService:
     def __init__(self, client: Client):
         self.client = client
+
+    async def get_xp_status(self, user_id: str, email: str | None = None, full_name: str | None = None) -> dict:
+        xp = await GamificationService(self.client).get_xp_status(user_id, email, full_name)
+        return {
+            "xp": xp["xp"],
+            "level": xp["level"],
+            "xp_to_next_level": xp["xp_needed_for_next_level"],
+            "current_level_xp": xp["current_level_xp"],
+            "progress_percentage": xp["progress_percentage"],
+            "badges": xp["badges"],
+        }
 
     async def get_public_profile(self, user_id: str) -> dict:
         """Return only the aggregate data that is safe to share publicly."""
@@ -46,6 +59,7 @@ class UserService:
             .execute()
         )
 
+        public_stats = await GamificationService(self.client).get_public_stats(user_id)
         return {
             "full_name": users[0]["full_name"],
             "skill_profiles": [
@@ -59,4 +73,5 @@ class UserService:
             "overall_score": round(sum(scores) / len(scores), 1) if scores else 0.0,
             "total_tasks": len(tasks),
             "completed_tasks": sum(task["status"] == "completed" for task in tasks),
+            **public_stats,
         }

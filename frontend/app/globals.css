@@ -184,6 +184,93 @@ input:-webkit-autofill:focus {
   pointer-events: none;
 }
 
+@keyframes xp-reward-pop {
+  0% { opacity: 0; transform: translate(-50%, 16px) scale(0.8); }
+  15%, 80% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
+}
+
+.xp-reward-popup {
+  animation: xp-reward-pop 2.2s ease both;
+}
+
+@keyframes sprint-analysis-step {
+  0%, 18% { opacity: 0; transform: translateY(8px); }
+  35%, 100% { opacity: 1; transform: translateY(0); }
+}
+
+.sprint-analysis-step {
+  animation: sprint-analysis-step 1.2s ease both;
+}
+
+.gamification-card {
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.16);
+}
+
+.gamification-card h2 {
+  margin: 0 0 14px;
+  color: white;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+}
+
+.muted-copy { color: rgba(255,255,255,0.42); font-size: 12px; line-height: 1.5; }
+
+.gamification-grid { display: grid; grid-template-columns: 1.25fr .75fr 1.2fr; gap: 18px; }
+.gamification-two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+
+@keyframes achievement-appear {
+  from { opacity: 0; transform: translateY(16px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.achievement-popup {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 120;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  max-width: 330px;
+  padding: 15px;
+  border: 1px solid rgba(251,191,36,.35);
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(43,31,10,.98), rgba(35,20,49,.98));
+  box-shadow: 0 20px 60px rgba(0,0,0,.4), 0 0 30px rgba(251,191,36,.12);
+  animation: achievement-appear .45s ease both;
+}
+
+.sidebar-xp-gain {
+  position: absolute;
+  right: 18px;
+  bottom: 24px;
+  z-index: 3;
+  color: #86efac;
+  font-size: 13px;
+  font-weight: 900;
+  pointer-events: none;
+  text-shadow: 0 0 14px rgba(74, 222, 128, 0.8);
+  animation: xp-float 2.2s ease-out forwards;
+}
+
+@keyframes xp-float {
+  0% { opacity: 0; transform: translateY(8px) scale(.85); }
+  14%, 70% { opacity: 1; transform: translateY(-8px) scale(1); }
+  100% { opacity: 0; transform: translateY(-28px) scale(.96); }
+}
+.achievement-popup p { margin: 0 0 3px; color: #fcd34d; font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.achievement-popup strong { display: block; color: white; font-size: 14px; }
+.achievement-popup span:last-child { display: block; margin-top: 3px; color: rgba(255,255,255,.5); font-size: 11px; }
+
+@media (max-width: 900px) { .gamification-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .gamification-two-column { grid-template-columns: 1fr; } }
+
 @keyframes integration-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }

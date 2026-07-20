@@ -7,8 +7,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   projects as projectsApi,
   tasks as tasksApi,
+  users as usersApi,
   Task,
   Project,
+  XpStatus,
 } from "@/lib/api";
 
 /* ── Palettes ───────────────────────────────────────────────────────── */
@@ -113,6 +115,8 @@ export default function TaskDetailPage() {
 
   // Confetti
   const [showConfetti, setShowConfetti] = useState(false);
+  const [xpReward, setXpReward] = useState<number | null>(null);
+  const [levelUp, setLevelUp] = useState<XpStatus | null>(null);
 
   const elapsed = useElapsed(task?.started_at ?? null, task?.completed_at ?? null);
 
@@ -173,10 +177,24 @@ export default function TaskDetailPage() {
     setCompleting(true);
     setError("");
     try {
+      const previousXp = await usersApi.xp(token).catch(() => null);
       const updated = await tasksApi.complete(task.id, uploadedFiles, token);
       setTask(updated);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 2500);
+      const currentXp = await usersApi.xp(token).catch(() => null);
+      if (currentXp) {
+        // Use the server-calculated change so temporary rewards (such as a
+        // daily streak bonus) are celebrated accurately without duplicating
+        // reward rules in the client.
+        const earnedXp = previousXp ? Math.max(0, currentXp.xp - previousXp.xp) : 0;
+        if (earnedXp) {
+          setXpReward(earnedXp);
+          setTimeout(() => setXpReward(null), 2200);
+        }
+        window.dispatchEvent(new CustomEvent<XpStatus>("xp:updated", { detail: currentXp }));
+        if (previousXp && currentXp.level > previousXp.level) setLevelUp(currentXp);
+      }
       if (updated.is_flagged) {
         setShowVerification(true);
       }
@@ -306,6 +324,11 @@ export default function TaskDetailPage() {
               animationDelay: `${(i % 7) * 35}ms`,
             }} />
           ))}
+        </div>
+      )}
+      {xpReward && (
+        <div aria-live="polite" className="xp-reward-popup" style={{ position: "fixed", zIndex: 95, top: "18%", left: "50%", transform: "translateX(-50%)", padding: "12px 20px", borderRadius: 999, background: "linear-gradient(135deg, #7c3aed, #2563eb)", border: "1px solid rgba(216,180,254,0.75)", boxShadow: "0 16px 45px rgba(124,58,237,0.45)", color: "white", fontSize: 18, fontWeight: 800 }}>
+          +{xpReward} XP
         </div>
       )}
 
@@ -859,6 +882,17 @@ export default function TaskDetailPage() {
             >
               {verifying ? "Reviewing…" : "Submit Verification"}
             </button>
+          </div>
+        </div>
+      )}
+      {levelUp && (
+        <div role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 100, display: "grid", placeItems: "center", padding: 20, background: "rgba(0,0,0,0.76)", backdropFilter: "blur(6px)" }}>
+          <div style={{ width: "min(100%, 390px)", padding: 30, borderRadius: 20, textAlign: "center", background: "#131313", border: "1px solid rgba(168,85,247,0.45)", boxShadow: "0 30px 100px rgba(124,58,237,0.3)" }}>
+            <div style={{ width: 60, height: 60, margin: "0 auto 16px", display: "grid", placeItems: "center", borderRadius: "50%", background: "linear-gradient(135deg, #a855f7, #3b82f6)", fontSize: 28 }}>✦</div>
+            <p style={{ margin: "0 0 6px", color: "#d8b4fe", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase" }}>Level up</p>
+            <h2 style={{ margin: "0 0 10px", fontSize: 28, color: "white" }}>You reached level {levelUp.level}</h2>
+            <p style={{ margin: "0 0 22px", color: "rgba(255,255,255,0.55)", fontSize: 14, lineHeight: 1.55 }}>You now have {levelUp.xp} XP. Keep completing tasks to build your momentum.</p>
+            <button onClick={() => setLevelUp(null)} style={{ width: "100%", padding: "11px 16px", border: "none", borderRadius: 10, background: "linear-gradient(135deg, #a855f7, #3b82f6)", color: "white", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Keep going</button>
           </div>
         </div>
       )}
