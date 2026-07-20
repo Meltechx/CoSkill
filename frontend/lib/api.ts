@@ -58,6 +58,8 @@ export const auth = {
 
   googleUrl: () => api<{ url: string }>("/api/auth/google"),
 
+  githubUrl: () => api<{ url: string }>("/api/auth/github"),
+
   updateProfile: (full_name: string, token: string) => api<{ id: string; email: string; full_name: string | null; avatar_url?: string | null }>("/api/auth/me", { method: "PUT", body: { full_name }, token }),
 
   uploadAvatar: async (file: File, token: string) => {

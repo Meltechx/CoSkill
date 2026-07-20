@@ -29,6 +29,7 @@ export default function RegisterPage() {
     }
   };
   const signInWithGoogle = async () => { try { window.location.assign((await authApi.googleUrl()).url); } catch (err) { setError(err instanceof Error ? err.message : "Google sign-in is unavailable."); } };
+  const signInWithGitHub = async () => { try { window.location.assign((await authApi.githubUrl()).url); } catch (err) { setError(err instanceof Error ? err.message : "GitHub sign-in is unavailable."); } };
 
   return (
     <main
@@ -318,6 +319,7 @@ export default function RegisterPage() {
           </form>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "20px 0" }}><span style={{ height: 1, flex: 1, background: "rgba(255,255,255,.09)" }} /><span style={{ color: "rgba(255,255,255,.3)", fontSize: 11 }}>OR</span><span style={{ height: 1, flex: 1, background: "rgba(255,255,255,.09)" }} /></div>
           <button type="button" onClick={signInWithGoogle} style={{ width: "100%", padding: "11px", borderRadius: "10px", background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.13)", color: "white", fontWeight: 600, cursor: "pointer" }}>G&nbsp;&nbsp; Continue with Google</button>
+          <button type="button" onClick={signInWithGitHub} style={{ width: "100%", marginTop: "10px", padding: "11px", borderRadius: "10px", background: "#24292f", border: "1px solid #444c56", color: "#f0f6fc", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .7a11.3 11.3 0 0 0-3.57 22.02c.57.1.77-.25.77-.55v-2.17c-3.14.68-3.8-1.34-3.8-1.34-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.69.08-.69 1.13.08 1.72 1.16 1.72 1.16 1 .1 2.63.71 3.18-1.26.1-.73.39-1.23.71-1.51-2.51-.29-5.15-1.26-5.15-5.6 0-1.24.44-2.25 1.17-3.05-.12-.29-.51-1.44.11-3 0 0 .95-.3 3.11 1.17A10.8 10.8 0 0 1 12 4.9c.97 0 1.95.13 2.86.39 2.16-1.47 3.11-1.17 3.11-1.17.62 1.56.23 2.71.11 3 .73.8 1.17 1.81 1.17 3.05 0 4.35-2.64 5.3-5.16 5.59.4.35.76 1.04.76 2.1v3.8c0 .3.2.65.78.54A11.3 11.3 0 0 0 12 .7Z" /></svg>Continue with GitHub</button>
         </div>
 
         {/* Footer link */}

@@ -78,6 +78,16 @@ class AuthService:
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not start Google sign-in: {str(e)}")
 
+    async def github_oauth_url(self) -> str:
+        try:
+            response = self.client.auth.sign_in_with_oauth({
+                "provider": "github",
+                "options": {"redirect_to": f"{settings.FRONTEND_URL}/auth/callback"},
+            })
+            return response.url
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"Could not start GitHub sign-in: {str(e)}")
+
     async def update_profile(self, user_id: str, full_name: str) -> dict:
         full_name = full_name.strip()
         if not full_name:

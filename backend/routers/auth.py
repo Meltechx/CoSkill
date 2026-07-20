@@ -67,6 +67,11 @@ async def google_oauth(auth_service: AuthService = Depends(get_auth_service)):
     return {"url": await auth_service.google_oauth_url()}
 
 
+@router.get("/github", response_model=OAuthUrlOut)
+async def github_oauth(auth_service: AuthService = Depends(get_auth_service)):
+    return {"url": await auth_service.github_oauth_url()}
+
+
 @router.put("/me", response_model=UserOut)
 async def update_me(body: ProfileUpdateRequest, current_user=Depends(get_current_user), auth_service: AuthService = Depends(get_auth_service)):
     update = await auth_service.update_profile(str(current_user.id), body.full_name)
