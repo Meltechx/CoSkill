@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, File, UploadFile
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from database import supabase
 from dependencies import get_auth_service, get_current_user
 from models.auth import AuthResponse, LoginRequest, RegisterRequest, SessionOut, UserOut, ProfileUpdateRequest, OAuthUrlOut
 from services.auth_service import AuthService
@@ -66,25 +65,6 @@ async def me(current_user=Depends(get_current_user)):
 @router.get("/google", response_model=OAuthUrlOut)
 async def google_oauth(auth_service: AuthService = Depends(get_auth_service)):
     return {"url": await auth_service.google_oauth_url()}
-
-
-@router.get("/github", response_model=OAuthUrlOut)
-async def github_oauth(auth_service: AuthService = Depends(get_auth_service)):
-    return {"url": await auth_service.github_oauth_url()}
-
-
-@router.get("/callback")
-async def github_callback(code: str):
-    result = supabase.auth.exchange_code_for_session({"auth_code": code})
-    session = result.session
-    return {
-        "access_token": session.access_token,
-        "user": {
-            "id": str(result.user.id),
-            "email": result.user.email,
-            "full_name": (result.user.user_metadata or {}).get("full_name", ""),
-        },
-    }
 
 
 @router.put("/me", response_model=UserOut)
