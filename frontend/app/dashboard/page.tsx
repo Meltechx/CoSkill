@@ -7,6 +7,7 @@ import StatsCard from "@/components/dashboard/StatsCard";
 import ProjectCard from "@/components/dashboard/ProjectCard";
 import CreateProjectModal from "@/components/dashboard/CreateProjectModal";
 import DashboardAssistant from "@/components/dashboard/DashboardAssistant";
+import UpcomingHackathons from "@/components/dashboard/UpcomingHackathons";
 
 function ActivityHeatmap({ tasks }: { tasks: Task[] }) {
   const days = Array.from({ length: 30 }, (_, index) => {
@@ -104,6 +105,7 @@ export default function DashboardPage() {
 
   return (
     <div className="github-dashboard" style={{ padding: "32px", background: "#0d1117", minHeight: "100vh", color: "#e6edf3", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+      <div className="dashboard-home-grid"><div className="dashboard-home-main">
 
       {/* ── Header ──────────────────────────────────────────────── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "28px" }}>
@@ -272,6 +274,8 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      </div><UpcomingHackathons /></div>
 
       <CreateProjectModal
         open={showModal}

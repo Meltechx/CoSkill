@@ -1,0 +1,11 @@
+"use client";
+
+import Link from "next/link";
+import { hackathons } from "@/lib/hackathons";
+
+export default function HackathonsPage() {
+  return <div className="github-dashboard" style={{ color: "#e6edf3" }}>
+    <header style={{ marginBottom: 28 }}><p style={{ margin: "0 0 6px", color: "#58a6ff", fontSize: 12, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase" }}>Discover</p><h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>Hackathons</h1><p style={{ margin: "8px 0 0", color: "#8b949e", fontSize: 14 }}>Current opportunities to build, collaborate, and compete.</p></header>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 16 }}>{hackathons.map((hackathon) => <Link key={hackathon.id} href={`/dashboard/hackathons/${hackathon.id}`} style={{ display: "flex", flexDirection: "column", minHeight: 230, padding: 18, border: "1px solid #30363d", borderRadius: 6, background: "#161b22", color: "inherit", textDecoration: "none" }}><div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}><span style={{ color: "#8b949e", fontSize: 12 }}>{hackathon.platform}</span><span style={{ padding: "3px 7px", border: "1px solid #30363d", borderRadius: 999, color: hackathon.format === "Online" ? "#3fb950" : "#d29922", fontSize: 11 }}>{hackathon.format}</span></div><h2 style={{ margin: "14px 0 8px", color: "#58a6ff", fontSize: 16, fontWeight: 600, lineHeight: 1.35 }}>{hackathon.name}</h2><p style={{ margin: 0, color: "#8b949e", fontSize: 13, lineHeight: 1.5 }}>{hackathon.description}</p><div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "end", marginTop: "auto", paddingTop: 16 }}><strong style={{ color: "#e6edf3", fontSize: 20 }}>{hackathon.prize}</strong><span style={{ color: "#8b949e", fontSize: 11 }}>Ends {hackathon.end.split(" ·")[0]}</span></div><div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 12 }}>{hackathon.themes.map((theme) => <span key={theme} style={{ padding: "3px 7px", borderRadius: 999, background: "#21262d", border: "1px solid #30363d", color: "#8b949e", fontSize: 11 }}>{theme}</span>)}</div></Link>)}</div>
+  </div>;
+}
