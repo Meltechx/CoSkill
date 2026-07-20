@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from database import get_authenticated_client, supabase_admin
 from dependencies import bearer_scheme, get_current_user, get_gamification_service
-from models.user import GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, UserXpOut
+from models.user import GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, TeamProfileOut, TeamProfileUpdate, UserXpOut
 from services.gamification_service import GamificationService
 from services.user_service import UserService
 
@@ -18,6 +18,23 @@ def get_authenticated_user_service(
 
 def get_public_user_service() -> UserService:
     return UserService(supabase_admin)
+
+
+@router.get("/me/team-profile", response_model=TeamProfileOut)
+async def get_my_team_profile(
+    current_user=Depends(get_current_user),
+    user_service: UserService = Depends(get_public_user_service),
+):
+    return await user_service.get_team_profile(str(current_user.id))
+
+
+@router.put("/me/team-profile", response_model=TeamProfileOut)
+async def update_my_team_profile(
+    body: TeamProfileUpdate,
+    current_user=Depends(get_current_user),
+    user_service: UserService = Depends(get_public_user_service),
+):
+    return await user_service.update_team_profile(str(current_user.id), body.model_dump(exclude_unset=True))
 
 
 @router.get("/me/xp", response_model=UserXpOut)

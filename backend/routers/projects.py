@@ -2,12 +2,15 @@ import logging
 
 from fastapi import APIRouter, Depends, status
 
+from database import supabase_admin
 from dependencies import get_ai_service, get_current_user, get_gamification_service, get_project_service, get_task_service
 from models.project import ProjectCreate, ProjectOut, SprintPlanOut, SprintRequest
 from models.task import TaskOut
+from models.user import TeamMatchOut
 from services.ai_service import AIService
 from services.project_service import ProjectService
 from services.task_service import TaskService
+from services.user_service import UserService
 from services.gamification_service import GamificationService
 
 router = APIRouter()
@@ -76,6 +79,38 @@ async def plan_sprint(
     except Exception as error:
         logger.warning("Could not award sprint-planning XP: %s", error)
     return plan
+
+
+@router.post("/{project_id}/match", response_model=list[TeamMatchOut])
+async def match_teammates(
+    project_id: str,
+    current_user=Depends(get_current_user),
+    project_service: ProjectService = Depends(get_project_service),
+    task_service: TaskService = Depends(get_task_service),
+    ai_service: AIService = Depends(get_ai_service),
+):
+    user_id = str(current_user.id)
+    project = await project_service.get_project(project_id, user_id)
+    tasks = await task_service.list_tasks(project_id, user_id)
+
+    user_service = UserService(supabase_admin)
+    candidates = await user_service.get_available_candidates(user_id)
+    if not candidates:
+        return []
+
+    ai_matches = await ai_service.match_teammates(project, tasks, candidates)
+
+    candidates_by_id = {c["id"]: c for c in candidates}
+    results = []
+    for m in ai_matches[:10]:
+        uid = m.get("user_id")
+        if uid and uid in candidates_by_id:
+            results.append({
+                "user": candidates_by_id[uid],
+                "compatibility": max(0, min(100, int(m.get("compatibility", 0)))),
+                "explanation": m.get("explanation", ""),
+            })
+    return results
 
 
 @router.post("/{project_id}/decompose", response_model=list[TaskOut], status_code=status.HTTP_201_CREATED)

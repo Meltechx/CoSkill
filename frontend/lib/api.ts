@@ -130,6 +130,41 @@ export interface Task {
   suggestions: string[];
 }
 
+export interface TeamProfile {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  skills: string[];
+  technologies: string[];
+  experience_level: string;
+  github_url: string | null;
+  linkedin_url: string | null;
+  work_preferences: string[];
+  team_role: string;
+  is_available: boolean;
+  level: number;
+  xp: number;
+}
+
+export interface TeamMatch {
+  user: TeamProfile;
+  compatibility: number;
+  explanation: string;
+}
+
+export interface TeamProfileUpdate {
+  bio?: string;
+  skills?: string[];
+  technologies?: string[];
+  experience_level?: string;
+  github_url?: string;
+  linkedin_url?: string;
+  work_preferences?: string[];
+  team_role?: string;
+  is_available?: boolean;
+}
+
 export const projects = {
   list: (token: string) =>
     api<Project[]>("/api/projects/", { token }),
@@ -151,6 +186,9 @@ export const projects = {
 
   decompose: (id: string, token: string) =>
     api<Task[]>(`/api/projects/${id}/decompose`, { method: "POST", token }),
+
+  matchTeammates: (id: string, token: string) =>
+    api<TeamMatch[]>(`/api/projects/${id}/match`, { method: "POST", token }),
 };
 
 export const tasks = {
@@ -311,6 +349,12 @@ export interface LeaderboardEntry {
 }
 
 export const users = {
+  teamProfile: (token: string) =>
+    api<TeamProfile>("/api/users/me/team-profile", { token }),
+
+  updateTeamProfile: (data: TeamProfileUpdate, token: string) =>
+    api<TeamProfile>("/api/users/me/team-profile", { method: "PUT", body: data, token }),
+
   xp: (token: string) =>
     api<XpStatus>("/api/users/me/xp", { token }),
 

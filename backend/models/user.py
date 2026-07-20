@@ -93,3 +93,38 @@ class PublicProfileOut(BaseModel):
     favorite_skill: Optional[str] = None
     current_streak: int
     recent_achievements: list[BadgeOut]
+
+
+class TeamProfileUpdate(BaseModel):
+    bio: Optional[str] = None
+    skills: Optional[list[str]] = None
+    technologies: Optional[list[str]] = None
+    experience_level: Optional[str] = None
+    github_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    work_preferences: Optional[list[str]] = None
+    team_role: Optional[str] = None
+    is_available: Optional[bool] = None
+
+
+class TeamProfileOut(BaseModel):
+    id: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    skills: list[str] = []
+    technologies: list[str] = []
+    experience_level: str = "mid"
+    github_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+    work_preferences: list[str] = []
+    team_role: str = "other"
+    is_available: bool = True
+    level: int = 1
+    xp: int = 0
+
+
+class TeamMatchOut(BaseModel):
+    user: TeamProfileOut
+    compatibility: int
+    explanation: str

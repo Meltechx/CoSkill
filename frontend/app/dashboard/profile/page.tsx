@@ -15,6 +15,9 @@ import {
   PerformanceSummary,
   SkillScore,
   RecentCompletion,
+  users,
+  TeamProfile,
+  TeamProfileUpdate,
 } from "@/lib/api";
 
 /* ── Constants ────────────────────────────────────────────────────────── */
@@ -330,6 +333,12 @@ export default function ProfilePage() {
   const [animate, setAnimate] = useState(false);
   const animTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [teamProfile, setTeamProfile] = useState<TeamProfile | null>(null);
+  const [teamLoading, setTeamLoading] = useState(false);
+  const [teamSaving, setTeamSaving] = useState(false);
+  const [teamMsg, setTeamMsg] = useState("");
+  const [teamForm, setTeamForm] = useState<TeamProfileUpdate>({});
+
   useEffect(() => {
     if (!token) return;
     perfApi
@@ -340,8 +349,53 @@ export default function ProfilePage() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Failed to load performance data"))
       .finally(() => setLoading(false));
+
+    setTeamLoading(true);
+    users.teamProfile(token)
+      .then((tp) => {
+        setTeamProfile(tp);
+        setTeamForm({
+          bio: tp.bio || "",
+          skills: tp.skills,
+          technologies: tp.technologies,
+          experience_level: tp.experience_level,
+          github_url: tp.github_url || "",
+          linkedin_url: tp.linkedin_url || "",
+          work_preferences: tp.work_preferences,
+          team_role: tp.team_role,
+          is_available: tp.is_available,
+        });
+      })
+      .catch(() => {})
+      .finally(() => setTeamLoading(false));
+
     return () => { if (animTimerRef.current) clearTimeout(animTimerRef.current); };
   }, [token]);
+
+  const handleTeamSave = async () => {
+    if (!token) return;
+    setTeamSaving(true);
+    setTeamMsg("");
+    try {
+      const updated = await users.updateTeamProfile(teamForm, token);
+      setTeamProfile(updated);
+      setTeamMsg("Saved!");
+      setTimeout(() => setTeamMsg(""), 2000);
+    } catch (err) {
+      setTeamMsg(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setTeamSaving(false);
+    }
+  };
+
+  const updateTeamField = <K extends keyof TeamProfileUpdate>(key: K, value: TeamProfileUpdate[K]) => {
+    setTeamForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleTagInput = (field: "skills" | "technologies" | "work_preferences", value: string) => {
+    const tags = value.split(",").map((t) => t.trim()).filter(Boolean);
+    updateTeamField(field, tags);
+  };
 
   const handleShare = () => {
     if (!user) return;
@@ -778,6 +832,174 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+      {/* ── Team Profile Settings ─────────────────────────────────────── */}
+      <div style={{
+        gridColumn: "1 / -1",
+        padding: "24px 28px", borderRadius: "16px",
+        background: "rgba(255,255,255,0.02)", border: "1px solid rgba(34,197,94,0.12)",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+          <div>
+            <p style={{ margin: "0 0 4px", fontSize: "11px", fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4ade80" }}>
+              Team Matching
+            </p>
+            <h2 style={{ margin: 0, fontSize: "17px", fontWeight: 700, color: "white", letterSpacing: "-0.02em" }}>
+              Your Team Profile
+            </h2>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {teamMsg && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: teamMsg === "Saved!" ? "#4ade80" : "#f87171" }}>
+                {teamMsg}
+              </span>
+            )}
+            <button
+              onClick={handleTeamSave}
+              disabled={teamSaving || teamLoading}
+              style={{
+                padding: "8px 18px", borderRadius: 9, border: "none", fontSize: 13, fontWeight: 700,
+                background: teamSaving ? "rgba(34,197,94,0.15)" : "linear-gradient(135deg, #22c55e, #16a34a)",
+                color: "white", cursor: teamSaving ? "not-allowed" : "pointer",
+                boxShadow: "0 0 16px rgba(34,197,94,0.15)",
+              }}
+            >
+              {teamSaving ? "Saving..." : "Save Profile"}
+            </button>
+          </div>
+        </div>
+
+        {teamLoading ? (
+          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>
+            Loading team profile...
+          </p>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            {/* Bio */}
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Bio</label>
+              <textarea
+                value={teamForm.bio || ""}
+                onChange={(e) => updateTeamField("bio", e.target.value)}
+                placeholder="Brief description of your background and interests..."
+                rows={3}
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", resize: "vertical", fontFamily: "inherit", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Role */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Team Role</label>
+              <select
+                value={teamForm.team_role || "other"}
+                onChange={(e) => updateTeamField("team_role", e.target.value)}
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", cursor: "pointer" }}
+              >
+                {["backend", "frontend", "mobile", "designer", "ai-ml", "devops", "other"].map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Experience */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Experience Level</label>
+              <select
+                value={teamForm.experience_level || "mid"}
+                onChange={(e) => updateTeamField("experience_level", e.target.value)}
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", cursor: "pointer" }}
+              >
+                {["junior", "mid", "senior", "lead"].map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Skills */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Skills (comma-separated)</label>
+              <input
+                type="text"
+                value={(teamForm.skills || []).join(", ")}
+                onChange={(e) => handleTagInput("skills", e.target.value)}
+                placeholder="React, Node.js, Python..."
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Technologies */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Technologies (comma-separated)</label>
+              <input
+                type="text"
+                value={(teamForm.technologies || []).join(", ")}
+                onChange={(e) => handleTagInput("technologies", e.target.value)}
+                placeholder="Docker, AWS, PostgreSQL..."
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* GitHub */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>GitHub URL</label>
+              <input
+                type="url"
+                value={teamForm.github_url || ""}
+                onChange={(e) => updateTeamField("github_url", e.target.value)}
+                placeholder="https://github.com/username"
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* LinkedIn */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>LinkedIn URL</label>
+              <input
+                type="url"
+                value={teamForm.linkedin_url || ""}
+                onChange={(e) => updateTeamField("linkedin_url", e.target.value)}
+                placeholder="https://linkedin.com/in/username"
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Work Preferences */}
+            <div>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Work Preferences (comma-separated)</label>
+              <input
+                type="text"
+                value={(teamForm.work_preferences || []).join(", ")}
+                onChange={(e) => handleTagInput("work_preferences", e.target.value)}
+                placeholder="remote, async, pair programming..."
+                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Available toggle */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 22 }}>
+              <button
+                onClick={() => updateTeamField("is_available", !teamForm.is_available)}
+                style={{
+                  width: 42, height: 24, borderRadius: 12, border: "none", cursor: "pointer",
+                  background: teamForm.is_available ? "#22c55e" : "rgba(255,255,255,0.12)",
+                  position: "relative", transition: "background 0.2s",
+                }}
+              >
+                <span style={{
+                  width: 18, height: 18, borderRadius: "50%", background: "white",
+                  position: "absolute", top: 3,
+                  left: teamForm.is_available ? 21 : 3,
+                  transition: "left 0.2s",
+                  display: "block",
+                }} />
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 600, color: teamForm.is_available ? "#4ade80" : "rgba(255,255,255,0.4)" }}>
+                {teamForm.is_available ? "Available for teams" : "Not available"}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
 
       </div>
     </div>

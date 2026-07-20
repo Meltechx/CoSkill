@@ -65,6 +65,15 @@ SPRINT_PLANNER_SYSTEM_PROMPT = (
     "duration. Do not invent tasks or dependencies."
 )
 
+TEAM_MATCHING_SYSTEM_PROMPT = (
+    "You are an AI team matching expert. Given a project's requirements and a list of available candidates, "
+    "rank the candidates by compatibility. For each candidate, provide a compatibility percentage (0-100) and "
+    "a one-sentence explanation of why they are a good fit.\n\n"
+    "Return JSON only: {\"matches\": [{\"user_id\": \"...\", \"compatibility\": integer, \"explanation\": \"...\"}]}\n"
+    "Return up to 10 matches, sorted by compatibility descending. Only include candidates with compatibility >= 20."
+)
+
+
 class AIService:
     def __init__(self):
         if not settings.OPENAI_API_KEY:
@@ -409,6 +418,43 @@ class AIService:
             "issues": string_list(result.get("issues"), 3) if relevant else [],
             "suggestions": string_list(result.get("suggestions"), 2) if relevant else [],
         }
+
+    async def match_teammates(
+        self,
+        project: dict,
+        project_tasks: list[dict],
+        candidates: list[dict],
+    ) -> list[dict]:
+        skill_tags = set()
+        for t in project_tasks:
+            for tag in (t.get("skill_tags") or []):
+                skill_tags.add(tag)
+
+        project_desc = (
+            f"Project: {project['title']}\n"
+            f"Goal: {project.get('goal') or project.get('description') or 'N/A'}\n"
+            f"Required skills: {', '.join(skill_tags) if skill_tags else 'general'}\n"
+            f"Tasks: {len(project_tasks)} total"
+        )
+
+        candidate_lines = []
+        for c in candidates:
+            candidate_lines.append(
+                f"- ID: {c['id']} | Name: {c.get('full_name', 'Unknown')} | "
+                f"Role: {c.get('team_role', 'other')} | Level: {c.get('experience_level', 'mid')} | "
+                f"Skills: {', '.join(c.get('skills') or [])} | "
+                f"Technologies: {', '.join(c.get('technologies') or [])} | "
+                f"Preferences: {', '.join(c.get('work_preferences') or [])} | "
+                f"Bio: {(c.get('bio') or '')[:200]}"
+            )
+
+        user_message = (
+            f"{project_desc}\n\n"
+            f"Available candidates:\n" + "\n".join(candidate_lines)
+        )
+
+        result = await self._json_completion(TEAM_MATCHING_SYSTEM_PROMPT, user_message)
+        return result.get("matches") or []
 
     async def _json_completion(self, system_prompt: str, user_message: str) -> dict:
         try:

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { projects as projectsApi, Project, SprintPlan, Task } from "@/lib/api";
+import { projects as projectsApi, Project, SprintPlan, Task, TeamMatch } from "@/lib/api";
 
 /* ── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -342,6 +342,10 @@ export default function ProjectDetailPage() {
   const [decomposing, setDecomposing] = useState(false);
   const [error, setError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [teamMatches, setTeamMatches] = useState<TeamMatch[]>([]);
+  const [matchingTeam, setMatchingTeam] = useState(false);
+  const [teamFilter, setTeamFilter] = useState<{ role: string; experience: string }>({ role: "", experience: "" });
   const [showSprintModal, setShowSprintModal] = useState(false);
   const [sprintDuration, setSprintDuration] = useState(16);
   const [teamSize, setTeamSize] = useState(1);
@@ -404,6 +408,21 @@ export default function ProjectDetailPage() {
       setError(err instanceof Error ? err.message : "Failed to plan sprint");
     } finally {
       setSprintPlanning(false);
+    }
+  };
+
+  const handleFindTeammates = async () => {
+    if (!token || matchingTeam) return;
+    setMatchingTeam(true);
+    setError("");
+    setShowTeamModal(true);
+    try {
+      const matches = await projectsApi.matchTeammates(projectId, token);
+      setTeamMatches(matches);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to find teammates");
+    } finally {
+      setMatchingTeam(false);
     }
   };
 
@@ -504,7 +523,25 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Action buttons */}
-          <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: "8px", flexShrink: 0, flexWrap: "wrap" }}>
+            <button
+              onClick={handleFindTeammates}
+              disabled={matchingTeam || totalTasks === 0}
+              style={{
+                display: "flex", alignItems: "center", gap: "7px", padding: "9px 14px",
+                background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.28)",
+                borderRadius: "9px", color: "#86efac", fontSize: "13px", fontWeight: 600,
+                cursor: matchingTeam || totalTasks === 0 ? "not-allowed" : "pointer",
+                opacity: totalTasks === 0 ? 0.45 : 1, whiteSpace: "nowrap",
+              }}
+            >
+              {matchingTeam ? <Spinner size={13} color="#86efac" /> : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 00-3-3.87" /><path d="M16 3.13a4 4 0 010 7.75" />
+                </svg>
+              )}
+              {matchingTeam ? "Matching…" : "Find Teammates"}
+            </button>
             <button
               onClick={() => { setSprintPlan(null); setShowSprintModal(true); }}
               disabled={tasks.filter((task) => task.status !== "completed" && task.status !== "cancelled").length === 0}
@@ -763,6 +800,161 @@ export default function ProjectDetailPage() {
 
 
       </div>
+      {showTeamModal && (() => {
+        const ROLES = ["", "backend", "frontend", "mobile", "designer", "ai-ml", "devops", "other"];
+        const LEVELS = ["", "junior", "mid", "senior", "lead"];
+        const filtered = teamMatches.filter((m) => {
+          if (teamFilter.role && m.user.team_role !== teamFilter.role) return false;
+          if (teamFilter.experience && m.user.experience_level !== teamFilter.experience) return false;
+          return true;
+        });
+        return (
+          <div role="dialog" aria-modal="true" aria-label="AI team matching" style={{ position: "fixed", inset: 0, zIndex: 50, overflowY: "auto", display: "grid", placeItems: "center", padding: 20, background: "rgba(0,0,0,0.74)", backdropFilter: "blur(5px)" }}>
+            <div style={{ width: "min(100%, 720px)", maxHeight: "min(800px, calc(100vh - 40px))", overflowY: "auto", padding: 28, borderRadius: 18, background: "#121212", border: "1px solid rgba(34,197,94,0.25)", boxShadow: "0 30px 80px rgba(0,0,0,0.55)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
+                <div>
+                  <p style={{ margin: "0 0 5px", fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "#4ade80" }}>AI Team Matching</p>
+                  <h2 style={{ margin: 0, fontSize: 21, color: "white", letterSpacing: "-0.03em" }}>Find teammates for {project.title}</h2>
+                </div>
+                <button onClick={() => setShowTeamModal(false)} style={{ border: "none", background: "transparent", color: "rgba(255,255,255,0.45)", fontSize: 25, cursor: "pointer", lineHeight: 1 }}>&times;</button>
+              </div>
+
+              {matchingTeam ? (
+                <div style={{ padding: "48px 20px", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+                  <Spinner size={24} color="#4ade80" />
+                  <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)" }}>AI is analyzing candidate profiles…</p>
+                </div>
+              ) : teamMatches.length === 0 ? (
+                <div style={{ padding: "48px 20px", textAlign: "center" }}>
+                  <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>No matching candidates found</p>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>No available users match your project requirements right now.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Filters */}
+                  <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+                    <select
+                      value={teamFilter.role}
+                      onChange={(e) => setTeamFilter((prev) => ({ ...prev, role: e.target.value }))}
+                      style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "white", fontSize: 13, outline: "none", cursor: "pointer" }}
+                    >
+                      <option value="">All roles</option>
+                      {ROLES.slice(1).map((r) => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                    <select
+                      value={teamFilter.experience}
+                      onChange={(e) => setTeamFilter((prev) => ({ ...prev, experience: e.target.value }))}
+                      style={{ padding: "7px 12px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "white", fontSize: 13, outline: "none", cursor: "pointer" }}
+                    >
+                      <option value="">All levels</option>
+                      {LEVELS.slice(1).map((l) => <option key={l} value={l}>{l}</option>)}
+                    </select>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", alignSelf: "center", marginLeft: "auto" }}>
+                      {filtered.length} of {teamMatches.length} candidates
+                    </span>
+                  </div>
+
+                  {/* Match cards */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {filtered.map((match) => {
+                      const compatColor = match.compatibility >= 80 ? "#4ade80" : match.compatibility >= 60 ? "#fbbf24" : "#fb923c";
+                      return (
+                        <div key={match.user.id} style={{
+                          padding: "18px 20px", borderRadius: 14,
+                          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
+                          transition: "border-color 0.2s",
+                        }}
+                        onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(34,197,94,0.25)"; }}
+                        onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)"; }}
+                        >
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                            {/* Avatar */}
+                            <div style={{
+                              width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                              background: "linear-gradient(135deg, rgba(34,197,94,0.2), rgba(59,130,246,0.2))",
+                              border: "1px solid rgba(34,197,94,0.2)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: 17, fontWeight: 700, color: "#4ade80",
+                            }}>
+                              {(match.user.full_name?.[0] || "?").toUpperCase()}
+                            </div>
+
+                            {/* Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                                <div>
+                                  <h3 style={{ fontSize: 15, fontWeight: 700, color: "white", margin: 0 }}>
+                                    {match.user.full_name || "Unknown"}
+                                  </h3>
+                                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", margin: "2px 0 0" }}>
+                                    {match.user.team_role} &middot; {match.user.experience_level} &middot; Lv.{match.user.level}
+                                  </p>
+                                </div>
+                                {/* Compatibility */}
+                                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                  <span style={{ fontSize: 22, fontWeight: 800, color: compatColor, letterSpacing: "-0.04em" }}>
+                                    {match.compatibility}%
+                                  </span>
+                                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", margin: "1px 0 0", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>match</p>
+                                </div>
+                              </div>
+
+                              {/* Explanation */}
+                              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, margin: "0 0 10px" }}>
+                                {match.explanation}
+                              </p>
+
+                              {/* Skills */}
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
+                                {match.user.skills.slice(0, 6).map((skill) => (
+                                  <span key={skill} style={{
+                                    fontSize: 11, fontWeight: 500, padding: "3px 8px", borderRadius: 6,
+                                    background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.18)", color: "#86efac",
+                                  }}>
+                                    {skill}
+                                  </span>
+                                ))}
+                                {match.user.github_url && (
+                                  <a
+                                    href={match.user.github_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      marginLeft: "auto", fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 6,
+                                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                                      color: "rgba(255,255,255,0.5)", textDecoration: "none",
+                                    }}
+                                  >
+                                    GitHub
+                                  </a>
+                                )}
+                                <button
+                                  style={{
+                                    fontSize: 11, fontWeight: 700, padding: "5px 12px", borderRadius: 7, border: "none",
+                                    background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                                    color: "white", cursor: "pointer",
+                                    boxShadow: "0 0 12px rgba(34,197,94,0.2)",
+                                  }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+                                >
+                                  Invite
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {showSprintModal && (
         <div role="dialog" aria-modal="true" aria-label="AI sprint planner" style={{ position: "fixed", inset: 0, zIndex: 50, overflowY: "auto", display: "grid", placeItems: "center", padding: 20, background: "rgba(0,0,0,0.74)", backdropFilter: "blur(5px)" }}>
           <div style={{ width: "min(100%, 680px)", maxHeight: "min(760px, calc(100vh - 40px))", overflowY: "auto", padding: 26, borderRadius: 18, background: "#121212", border: "1px solid rgba(59,130,246,0.25)", boxShadow: "0 30px 80px rgba(0,0,0,0.55)" }}>
