@@ -10,6 +10,8 @@ interface GitHubRepo {
   language: string | null;
   stargazers_count: number;
   forks_count: number;
+  updated_at: string;
+  topics: string[];
 }
 
 const LANGUAGE_COLORS: Record<string, string> = {
@@ -38,6 +40,15 @@ function githubUsername(value: string | null | undefined) {
   return /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(username) ? username : null;
 }
 
+function relativeTime(isoDate: string) {
+  const seconds = Math.max(0, Math.floor((Date.now() - new Date(isoDate).getTime()) / 1000));
+  if (seconds < 60) return "just now";
+  const units: Array<[number, string]> = [[31536000, "year"], [2592000, "month"], [604800, "week"], [86400, "day"], [3600, "hour"], [60, "minute"]];
+  const [amount, unit] = units.find(([threshold]) => seconds >= threshold) || [60, "minute"];
+  const value = Math.floor(seconds / amount);
+  return `${value} ${unit}${value === 1 ? "" : "s"} ago`;
+}
+
 export function GitHubRepos({ githubUrl }: { githubUrl: string | null | undefined }) {
   const username = githubUsername(githubUrl);
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
@@ -47,7 +58,7 @@ export function GitHubRepos({ githubUrl }: { githubUrl: string | null | undefine
     if (!username) return;
     const controller = new AbortController();
     setStatus("loading");
-    fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=6`, { signal: controller.signal })
+    fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=6`, { signal: controller.signal, headers: { Accept: "application/vnd.github+json" } })
       .then(async (response) => {
         if (!response.ok) throw new Error("GitHub repositories could not be loaded.");
         return response.json() as Promise<GitHubRepo[]>;
@@ -89,6 +100,10 @@ export function GitHubRepos({ githubUrl }: { githubUrl: string | null | undefine
                   <span>⭐ {repo.stargazers_count}</span>
                   <span>🍴 {repo.forks_count}</span>
                 </div>
+                <p style={{ margin: "12px 0 0", color: "#8b949e", fontSize: 11 }}>Updated {relativeTime(repo.updated_at)}</p>
+                {repo.topics?.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 10 }}>
+                  {repo.topics.map((topic) => <span key={topic} style={{ padding: "3px 7px", borderRadius: 999, background: "rgba(56,139,253,.12)", border: "1px solid rgba(56,139,253,.25)", color: "#79c0ff", fontSize: 10, lineHeight: 1.2 }}>{topic}</span>)}
+                </div>}
               </article>
             );
           })}
