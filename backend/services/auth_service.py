@@ -82,7 +82,7 @@ class AuthService:
         try:
             response = self.client.auth.sign_in_with_oauth({
                 "provider": "github",
-                "options": {"redirect_to": f"{settings.FRONTEND_URL}/auth/callback"},
+                "options": {"redirect_to": f"{settings.FRONTEND_URL}/auth/callback", "scopes": "repo read:user"},
             })
             return response.url
         except Exception as e:

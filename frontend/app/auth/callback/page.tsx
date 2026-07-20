@@ -1,17 +1,33 @@
-"use client";
+'use client';
+import { useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-
-export default function AuthCallbackPage() {
+function CallbackHandler() {
   const router = useRouter();
-  const [message, setMessage] = useState("Finishing sign-in…");
+  const searchParams = useSearchParams();
+
   useEffect(() => {
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    const queryParams = new URLSearchParams(window.location.search);
-    const token = hashParams.get("access_token") || queryParams.get("access_token");
-    if (token) { localStorage.setItem("token", token); router.replace("/dashboard"); }
-    else setMessage("Sign-in did not return a session. Please try again.");
-  }, [router]);
-  return <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#080808", color: "white" }}><p style={{ color: "rgba(255,255,255,.6)" }}>{message}</p></main>;
+    const code = searchParams.get('code');
+    if (code) {
+      fetch(`http://localhost:8000/api/auth/callback?code=${code}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.access_token) {
+            localStorage.setItem('token', data.access_token);
+            router.push('/dashboard');
+          } else {
+            router.push('/login?error=oauth_failed');
+          }
+        })
+        .catch(() => router.push('/login?error=oauth_failed'));
+    } else {
+      router.push('/login');
+    }
+  }, [searchParams, router]);
+
+  return <div style={{color:'white',display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0d1117'}}>Signing in with GitHub...</div>;
+}
+
+export default function AuthCallback() {
+  return <Suspense><CallbackHandler /></Suspense>;
 }

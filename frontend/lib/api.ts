@@ -71,6 +71,37 @@ export const auth = {
   },
 };
 
+export interface GitHubRepo {
+  owner: string;
+  name: string;
+  description: string | null;
+  language: string | null;
+  stars: number;
+  updated_at: string;
+  default_branch: string;
+  private: boolean;
+  html_url: string;
+}
+
+export interface GitHubBranch { name: string; sha: string; protected: boolean; }
+export interface GitHubCommit { sha: string; message: string; author: string; authored_at: string | null; html_url: string; }
+export interface GitHubPull { number: number; title: string; state: string; author: string; updated_at: string; html_url: string; head: string; base: string; }
+export interface GitHubIssue { number: number; title: string; state: string; author: string; labels: string[]; updated_at: string; html_url: string; }
+
+export const github = {
+  connect: (provider_token: string, token: string) =>
+    api<void>("/api/github/connect", { method: "POST", body: { provider_token }, token }),
+  repos: (token: string) => api<GitHubRepo[]>("/api/github/repos", { token }),
+  branches: (owner: string, repo: string, token: string) =>
+    api<GitHubBranch[]>(`/api/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches`, { token }),
+  commits: (owner: string, repo: string, token: string) =>
+    api<GitHubCommit[]>(`/api/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits`, { token }),
+  pulls: (owner: string, repo: string, token: string) =>
+    api<GitHubPull[]>(`/api/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`, { token }),
+  issues: (owner: string, repo: string, token: string) =>
+    api<GitHubIssue[]>(`/api/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/issues`, { token }),
+};
+
 // Projects
 export interface Project {
   id: string;

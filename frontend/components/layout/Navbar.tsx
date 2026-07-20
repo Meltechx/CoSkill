@@ -8,6 +8,7 @@ import JudgeMode from "@/components/dashboard/JudgeMode";
 import UserSearch from "@/components/layout/UserSearch";
 
 const menuItems = [
+  ["Workspace", "/dashboard/workspace"],
   ["Hackathons", "/dashboard/hackathons"],
   ["Projects", "/dashboard/projects"],
   ["Performance", "/dashboard/performance"],
