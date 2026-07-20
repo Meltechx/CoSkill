@@ -1,3 +1,5 @@
+import re
+
 from fastapi import HTTPException, status
 from supabase import Client
 
@@ -5,6 +7,8 @@ from services.gamification_service import GamificationService
 
 
 class UserService:
+    USERNAME_PATTERN = re.compile(r"^[a-z0-9_]{3,20}$")
+
     def __init__(self, client: Client):
         self.client = client
 
@@ -21,14 +25,21 @@ class UserService:
 
     async def update_team_profile(self, user_id: str, data: dict) -> dict:
         payload = {k: v for k, v in data.items() if v is not None}
+        if "username" in payload:
+            payload["username"] = self._normalize_username(payload["username"])
         if not payload:
             return await self.get_team_profile(user_id)
-        response = (
-            self.client.table("users")
-            .update(payload)
-            .eq("id", user_id)
-            .execute()
-        )
+        try:
+            response = (
+                self.client.table("users")
+                .update(payload)
+                .eq("id", user_id)
+                .execute()
+            )
+        except Exception as exc:
+            if "duplicate key" in str(exc).lower() or "23505" in str(exc):
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That username is already taken.")
+            raise
         if not response.data:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -39,7 +50,7 @@ class UserService:
     async def get_team_profile(self, user_id: str) -> dict:
         response = (
             self.client.table("users")
-            .select("id, full_name, avatar_url, bio, skills, technologies, experience_level, github_url, linkedin_url, work_preferences, team_role, is_available, level, xp")
+            .select("id, full_name, username, avatar_url, bio, skills, technologies, experience_level, github_url, linkedin_url, work_preferences, team_role, is_available, level, xp")
             .eq("id", user_id)
             .single()
             .execute()
@@ -51,7 +62,7 @@ class UserService:
     async def get_available_candidates(self, exclude_user_id: str) -> list[dict]:
         response = (
             self.client.table("users")
-            .select("id, full_name, avatar_url, bio, skills, technologies, experience_level, github_url, linkedin_url, work_preferences, team_role, is_available, level, xp")
+            .select("id, full_name, username, avatar_url, bio, skills, technologies, experience_level, github_url, linkedin_url, work_preferences, team_role, is_available, level, xp")
             .eq("is_available", True)
             .neq("id", exclude_user_id)
             .execute()
@@ -62,6 +73,7 @@ class UserService:
         return {
             "id": row["id"],
             "full_name": row.get("full_name"),
+            "username": row.get("username"),
             "avatar_url": row.get("avatar_url"),
             "bio": row.get("bio"),
             "skills": row.get("skills") or [],
@@ -79,9 +91,9 @@ class UserService:
     async def search_users(self, query: str) -> list[dict]:
         response = (
             self.client.table("users")
-            .select("id, full_name, avatar_url, team_role, experience_level, skills, bio, is_available")
+            .select("id, full_name, username, avatar_url, team_role, experience_level, skills, bio, is_available")
             .eq("is_available", True)
-            .ilike("full_name", f"%{query}%")
+            .or_(f"username.ilike.%{query}%,full_name.ilike.%{query}%")
             .limit(20)
             .execute()
         )
@@ -89,6 +101,7 @@ class UserService:
             {
                 "id": row["id"],
                 "full_name": row.get("full_name"),
+                "username": row.get("username"),
                 "avatar_url": row.get("avatar_url"),
                 "team_role": row.get("team_role") or "other",
                 "experience_level": row.get("experience_level") or "mid",
@@ -99,11 +112,20 @@ class UserService:
             for row in (response.data or [])
         ]
 
-    async def get_public_profile(self, user_id: str) -> dict:
+    async def is_username_available(self, username: str) -> bool:
+        try:
+            normalized = self._normalize_username(username)
+        except HTTPException:
+            return False
+        response = self.client.table("users").select("id").eq("username", normalized).limit(1).execute()
+        return not bool(response.data)
+
+    async def get_public_profile(self, username: str) -> dict:
+        username = self._normalize_username(username)
         user_response = (
             self.client.table("users")
-            .select("full_name, avatar_url, bio, team_role, experience_level, skills, is_available")
-            .eq("id", user_id)
+            .select("id, full_name, username, avatar_url, bio, team_role, experience_level, skills, is_available")
+            .eq("username", username)
             .limit(1)
             .execute()
         )
@@ -115,6 +137,7 @@ class UserService:
             )
 
         u = users[0]
+        user_id = u["id"]
         if not u.get("is_available", True):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -155,6 +178,7 @@ class UserService:
         public_stats = await GamificationService(self.client).get_public_stats(user_id)
         return {
             "full_name": u["full_name"],
+            "username": u["username"],
             "avatar_url": u.get("avatar_url"),
             "bio": u.get("bio"),
             "team_role": u.get("team_role") or "other",
@@ -174,3 +198,12 @@ class UserService:
             "total_projects": len(projects_response.data or []),
             **public_stats,
         }
+
+    def _normalize_username(self, username: str) -> str:
+        normalized = username.strip().lower()
+        if not self.USERNAME_PATTERN.fullmatch(normalized):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Username must be 3–20 characters using only letters, numbers, or underscores.",
+            )
+        return normalized

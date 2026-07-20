@@ -3,7 +3,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from database import get_authenticated_client, supabase_admin
 from dependencies import bearer_scheme, get_current_user, get_gamification_service
-from models.user import GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, TeamProfileOut, TeamProfileUpdate, UserSearchOut, UserXpOut
+from models.user import GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, TeamProfileOut, TeamProfileUpdate, UsernameAvailabilityOut, UserSearchOut, UserXpOut
 from services.gamification_service import GamificationService
 from services.user_service import UserService
 
@@ -79,9 +79,17 @@ async def search_users(
     return await user_service.search_users(q)
 
 
-@router.get("/{user_id}/profile", response_model=PublicProfileOut)
-async def get_public_profile(
-    user_id: str,
+@router.get("/check-username", response_model=UsernameAvailabilityOut)
+async def check_username(
+    username: str = Query(..., min_length=1, max_length=20),
     user_service: UserService = Depends(get_public_user_service),
 ):
-    return await user_service.get_public_profile(user_id)
+    return {"available": await user_service.is_username_available(username)}
+
+
+@router.get("/{username}/profile", response_model=PublicProfileOut)
+async def get_public_profile(
+    username: str,
+    user_service: UserService = Depends(get_public_user_service),
+):
+    return await user_service.get_public_profile(username)

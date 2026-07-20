@@ -133,6 +133,7 @@ export interface Task {
 export interface TeamProfile {
   id: string;
   full_name: string | null;
+  username: string | null;
   avatar_url: string | null;
   bio: string | null;
   skills: string[];
@@ -154,6 +155,7 @@ export interface TeamMatch {
 }
 
 export interface TeamProfileUpdate {
+  username?: string;
   bio?: string;
   skills?: string[];
   technologies?: string[];
@@ -286,6 +288,7 @@ export const judge = {
 export interface UserSearchResult {
   id: string;
   full_name: string | null;
+  username: string | null;
   avatar_url: string | null;
   team_role: string;
   experience_level: string;
@@ -296,6 +299,7 @@ export interface UserSearchResult {
 
 export interface PublicProfile {
   full_name: string;
+  username: string;
   avatar_url: string | null;
   bio: string | null;
   team_role: string;
@@ -369,6 +373,9 @@ export const users = {
   search: (q: string) =>
     api<UserSearchResult[]>(`/api/users/search?q=${encodeURIComponent(q)}`),
 
+  checkUsername: (username: string) =>
+    api<{ available: boolean }>(`/api/users/check-username?username=${encodeURIComponent(username)}`),
+
   teamProfile: (token: string) =>
     api<TeamProfile>("/api/users/me/team-profile", { token }),
 
@@ -384,6 +391,6 @@ export const users = {
   leaderboard: (token: string) =>
     api<LeaderboardEntry[]>("/api/users/leaderboard", { token }),
 
-  publicProfile: (id: string) =>
-    api<PublicProfile>(`/api/users/${encodeURIComponent(id)}/profile`),
+  publicProfile: (username: string) =>
+    api<PublicProfile>(`/api/users/${encodeURIComponent(username)}/profile`),
 };

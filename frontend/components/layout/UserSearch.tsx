@@ -46,11 +46,11 @@ export default function UserSearch() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelect = (userId: string) => {
+  const handleSelect = (username: string) => {
     setOpen(false);
     setQuery("");
     setResults([]);
-    router.push(`/profile/${userId}`);
+    router.push(`/profile/${username}`);
   };
 
   return (
@@ -103,12 +103,14 @@ export default function UserSearch() {
           {results.map((user) => (
             <button
               key={user.id}
-              onClick={() => handleSelect(user.id)}
+              onClick={() => user.username && handleSelect(user.username)}
+              disabled={!user.username}
               style={{
                 width: "100%", display: "flex", alignItems: "center", gap: 10,
                 padding: "10px 12px", border: "none", background: "transparent",
                 color: "white", cursor: "pointer", textAlign: "left",
                 borderBottom: "1px solid rgba(255,255,255,0.04)",
+                opacity: user.username ? 1 : 0.55,
               }}
               onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
@@ -126,6 +128,7 @@ export default function UserSearch() {
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {user.full_name || "Unknown"}
                 </p>
+                {user.username && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#c084fc", fontWeight: 600 }}>@{user.username}</p>}
                 <p style={{ margin: "1px 0 0", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
                   {user.team_role} · {user.experience_level}
                 </p>

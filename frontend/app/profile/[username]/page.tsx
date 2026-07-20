@@ -56,16 +56,16 @@ function SkillBar({ skill }: { skill: SkillScore }) {
 }
 
 export default function PublicProfilePage() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ username: string }>();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!params.id) return;
-    users.publicProfile(params.id)
+    if (!params.username) return;
+    users.publicProfile(params.username)
       .then(setProfile)
       .catch((err) => setError(err instanceof Error ? err.message : "Unable to load this profile."));
-  }, [params.id]);
+  }, [params.username]);
 
   if (error) {
     return (
@@ -110,6 +110,7 @@ export default function PublicProfilePage() {
         <div>
           <p style={{ margin: 0, color: "#c084fc", fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase" }}>CoSkill profile</p>
           <h1 style={{ margin: "4px 0 0", fontSize: 28, letterSpacing: "-0.04em" }}>{profile.full_name}</h1>
+          <p style={{ margin: "4px 0 0", color: "rgba(255,255,255,0.52)", fontSize: 13 }}>@{profile.username}</p>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
             <span style={{ padding: "3px 8px", borderRadius: 6, background: "rgba(168,85,247,0.12)", border: "1px solid rgba(168,85,247,0.25)", color: "#d8b4fe", fontSize: 11, fontWeight: 700 }}>
               Lv. {profile.level}

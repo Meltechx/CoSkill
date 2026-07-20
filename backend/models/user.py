@@ -80,6 +80,7 @@ class LeaderboardEntryOut(BaseModel):
 class UserSearchOut(BaseModel):
     id: str
     full_name: Optional[str] = None
+    username: Optional[str] = None
     avatar_url: Optional[str] = None
     team_role: str = "other"
     experience_level: str = "mid"
@@ -92,6 +93,7 @@ class PublicProfileOut(BaseModel):
     """The intentionally limited data exposed on a shareable profile."""
 
     full_name: str
+    username: str
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     team_role: str = "other"
@@ -113,6 +115,7 @@ class PublicProfileOut(BaseModel):
 
 
 class TeamProfileUpdate(BaseModel):
+    username: Optional[str] = None
     bio: Optional[str] = None
     skills: Optional[list[str]] = None
     technologies: Optional[list[str]] = None
@@ -127,6 +130,7 @@ class TeamProfileUpdate(BaseModel):
 class TeamProfileOut(BaseModel):
     id: str
     full_name: Optional[str] = None
+    username: Optional[str] = None
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     skills: list[str] = []
@@ -145,3 +149,7 @@ class TeamMatchOut(BaseModel):
     user: TeamProfileOut
     compatibility: int
     explanation: str
+
+
+class UsernameAvailabilityOut(BaseModel):
+    available: bool

@@ -398,8 +398,11 @@ export default function ProfilePage() {
   };
 
   const handleShare = () => {
-    if (!user) return;
-    const url = `${window.location.origin}/profile/${user.id}`;
+    if (!teamProfile?.username) {
+      setTeamMsg("Choose a username in Edit profile before sharing.");
+      return;
+    }
+    const url = `${window.location.origin}/profile/${teamProfile.username}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2200);
@@ -563,7 +566,7 @@ export default function ProfilePage() {
                 {user?.full_name || "Anonymous"}
               </h1>
               <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.38)", marginBottom: "6px" }}>
-                {user?.email}
+                {teamProfile?.username ? `@${teamProfile.username}` : user?.email}
               </p>
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <div style={{

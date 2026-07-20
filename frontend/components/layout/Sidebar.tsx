@@ -72,6 +72,7 @@ export default function Sidebar() {
   const { user, token, logout } = useAuth();
   const [xpStatus, setXpStatus] = useState<XpStatus | null>(null);
   const [xpGain, setXpGain] = useState<number | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const previousXp = useRef<number | null>(null);
 
   useEffect(() => {
@@ -90,6 +91,14 @@ export default function Sidebar() {
       window.clearInterval(refresh);
       window.removeEventListener("xp:updated", handleXpUpdate);
     };
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      setUsername(null);
+      return;
+    }
+    users.teamProfile(token).then((profile) => setUsername(profile.username)).catch(() => setUsername(null));
   }, [token]);
 
   useEffect(() => {
@@ -274,7 +283,7 @@ export default function Sidebar() {
               )}
             </div>
             <p style={{ fontSize: "11px", color: "rgba(255,255,255,0.32)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {user?.email}
+              {username ? `@${username}` : user?.email}
             </p>
           </div>
         </div>
