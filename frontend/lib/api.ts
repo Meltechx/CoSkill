@@ -283,12 +283,29 @@ export const judge = {
   pitch: (token: string) => api<JudgePitch>("/api/performance/judge-pitch", { method: "POST", token }),
 };
 
+export interface UserSearchResult {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  team_role: string;
+  experience_level: string;
+  skills: string[];
+  bio: string | null;
+  is_available: boolean;
+}
+
 export interface PublicProfile {
   full_name: string;
+  avatar_url: string | null;
+  bio: string | null;
+  team_role: string;
+  experience_level: string;
+  skills: string[];
   skill_profiles: SkillScore[];
   overall_score: number;
   total_tasks: number;
   completed_tasks: number;
+  total_projects: number;
   level: number;
   total_xp: number;
   unlocked_badges: Badge[];
@@ -349,6 +366,9 @@ export interface LeaderboardEntry {
 }
 
 export const users = {
+  search: (q: string) =>
+    api<UserSearchResult[]>(`/api/users/search?q=${encodeURIComponent(q)}`),
+
   teamProfile: (token: string) =>
     api<TeamProfile>("/api/users/me/team-profile", { token }),
 

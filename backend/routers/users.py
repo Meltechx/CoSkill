@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials
 
 from database import get_authenticated_client, supabase_admin
 from dependencies import bearer_scheme, get_current_user, get_gamification_service
-from models.user import GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, TeamProfileOut, TeamProfileUpdate, UserXpOut
+from models.user import GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, TeamProfileOut, TeamProfileUpdate, UserSearchOut, UserXpOut
 from services.gamification_service import GamificationService
 from services.user_service import UserService
 
@@ -69,6 +69,14 @@ async def get_demo_leaderboard(
     gamification_service: GamificationService = Depends(get_gamification_service),
 ):
     return await gamification_service.get_leaderboard()
+
+
+@router.get("/search", response_model=list[UserSearchOut])
+async def search_users(
+    q: str = Query(..., min_length=1, max_length=100),
+    user_service: UserService = Depends(get_public_user_service),
+):
+    return await user_service.search_users(q)
 
 
 @router.get("/{user_id}/profile", response_model=PublicProfileOut)

@@ -76,11 +76,33 @@ class UserService:
             "xp": row.get("xp") or 0,
         }
 
+    async def search_users(self, query: str) -> list[dict]:
+        response = (
+            self.client.table("users")
+            .select("id, full_name, avatar_url, team_role, experience_level, skills, bio, is_available")
+            .eq("is_available", True)
+            .ilike("full_name", f"%{query}%")
+            .limit(20)
+            .execute()
+        )
+        return [
+            {
+                "id": row["id"],
+                "full_name": row.get("full_name"),
+                "avatar_url": row.get("avatar_url"),
+                "team_role": row.get("team_role") or "other",
+                "experience_level": row.get("experience_level") or "mid",
+                "skills": row.get("skills") or [],
+                "bio": row.get("bio"),
+                "is_available": True,
+            }
+            for row in (response.data or [])
+        ]
+
     async def get_public_profile(self, user_id: str) -> dict:
-        """Return only the aggregate data that is safe to share publicly."""
         user_response = (
             self.client.table("users")
-            .select("full_name")
+            .select("full_name, avatar_url, bio, team_role, experience_level, skills, is_available")
             .eq("id", user_id)
             .limit(1)
             .execute()
@@ -92,6 +114,13 @@ class UserService:
                 detail="Profile not found.",
             )
 
+        u = users[0]
+        if not u.get("is_available", True):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This profile is not public.",
+            )
+
         tasks_response = (
             self.client.table("tasks")
             .select("id, status, projects!inner(user_id)")
@@ -99,6 +128,13 @@ class UserService:
             .execute()
         )
         tasks = tasks_response.data or []
+
+        projects_response = (
+            self.client.table("projects")
+            .select("id")
+            .eq("user_id", user_id)
+            .execute()
+        )
 
         scores_response = (
             self.client.table("performance_scores")
@@ -118,7 +154,12 @@ class UserService:
 
         public_stats = await GamificationService(self.client).get_public_stats(user_id)
         return {
-            "full_name": users[0]["full_name"],
+            "full_name": u["full_name"],
+            "avatar_url": u.get("avatar_url"),
+            "bio": u.get("bio"),
+            "team_role": u.get("team_role") or "other",
+            "experience_level": u.get("experience_level") or "mid",
+            "skills": u.get("skills") or [],
             "skill_profiles": [
                 {
                     "skill": row["skill_name"],
@@ -130,5 +171,6 @@ class UserService:
             "overall_score": round(sum(scores) / len(scores), 1) if scores else 0.0,
             "total_tasks": len(tasks),
             "completed_tasks": sum(task["status"] == "completed" for task in tasks),
+            "total_projects": len(projects_response.data or []),
             **public_stats,
         }

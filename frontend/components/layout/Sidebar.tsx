@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import JudgeMode from "@/components/dashboard/JudgeMode";
 import XPCard from "@/components/gamification/XPCard";
+import UserSearch from "@/components/layout/UserSearch";
 import { users, XpStatus } from "@/lib/api";
 
 const navItems = [
@@ -161,6 +162,11 @@ export default function Sidebar() {
         </Link>
       </div>
 
+      {/* Search */}
+      <div style={{ padding: "12px 0 0" }}>
+        <UserSearch />
+      </div>
+
       {/* Nav */}
       <nav style={{ flex: 1, padding: "12px 10px" }}>
         <p
@@ -274,6 +280,11 @@ export default function Sidebar() {
         </div>
 
         {xpStatus && <div style={{ position: "relative", padding: "2px 10px 10px" }}><XPCard status={xpStatus} compact />{xpGain && <span className="sidebar-xp-gain">+{xpGain} XP</span>}</div>}
+
+        <Link href="/onboarding" style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 4px", padding: "7px 10px", borderRadius: 8, color: "rgba(255,255,255,.52)", fontSize: 13, textDecoration: "none" }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+          Edit profile
+        </Link>
 
         <button
           onClick={() => logout()}

@@ -77,14 +77,31 @@ class LeaderboardEntryOut(BaseModel):
     completion_rate: int
 
 
+class UserSearchOut(BaseModel):
+    id: str
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    team_role: str = "other"
+    experience_level: str = "mid"
+    skills: list[str] = []
+    bio: Optional[str] = None
+    is_available: bool = True
+
+
 class PublicProfileOut(BaseModel):
     """The intentionally limited data exposed on a shareable profile."""
 
     full_name: str
+    avatar_url: Optional[str] = None
+    bio: Optional[str] = None
+    team_role: str = "other"
+    experience_level: str = "mid"
+    skills: list[str] = []
     skill_profiles: list[SkillScore]
     overall_score: float
     total_tasks: int
     completed_tasks: int
+    total_projects: int
     level: int
     total_xp: int
     unlocked_badges: list[BadgeOut]
