@@ -137,9 +137,9 @@ export default function JudgeMode() {
       <button
         onClick={() => setOpen(true)}
         style={{
-          width: "100%", padding: "9px 10px", borderRadius: "8px", border: "1px solid rgba(168,85,247,0.28)",
-          background: "linear-gradient(135deg, rgba(168,85,247,0.16), rgba(59,130,246,0.12))", color: "#e9d5ff",
-          cursor: "pointer", fontSize: "13px", fontWeight: 700, display: "flex", alignItems: "center", gap: 8,
+          width: "auto", padding: "7px 10px", borderRadius: "6px", border: "1px solid #30363d",
+          background: "#21262d", color: "#e6edf3",
+          cursor: "pointer", fontSize: "13px", fontWeight: 600, display: "flex", alignItems: "center", gap: 7,
         }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">

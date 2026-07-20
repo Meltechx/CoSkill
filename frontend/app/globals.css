@@ -4,20 +4,32 @@
 
 html {
   color-scheme: dark;
-  background: #080808;
+  background: #0d1117;
 }
 
 body {
   margin: 0;
-  background: #080808;
-  color: white;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 ::selection {
-  background: #a855f7;
+  background: #2f81f7;
   color: white;
+}
+
+:root {
+  --coskill-bg: #0d1117;
+  --coskill-panel: #161b22;
+  --coskill-border: #30363d;
+  --coskill-text: #e6edf3;
+  --coskill-muted: #8b949e;
+  --coskill-accent: #2f81f7;
+  --coskill-success: #3fb950;
 }
 
 input:-webkit-autofill,
@@ -163,6 +175,60 @@ input:-webkit-autofill:focus {
   border-color: rgba(239, 68, 68, 0.7);
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
+
+/* GitHub-style project dialog fields are deliberately scoped to the dashboard. */
+.github-dashboard .auth-input {
+  background: #0d1117;
+  border-color: #30363d;
+  border-radius: 6px;
+  color: #e6edf3;
+}
+
+.github-dashboard .auth-input:focus {
+  border-color: #58a6ff;
+  box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.2);
+}
+
+.github-dashboard .auth-input::placeholder {
+  color: #8b949e;
+}
+
+/* ── Dashboard application shell ───────────────────────── */
+.dashboard-shell {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr) 260px;
+  gap: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 88px 24px 24px;
+}
+
+.dashboard-left-panel, .dashboard-right-panel { min-width: 0; }
+.dashboard-left-panel { padding: 8px 0; }
+.dashboard-panel-title { margin: 18px 0 8px; padding: 0 10px; color: var(--coskill-muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.dashboard-panel-nav { display: grid; gap: 3px; }
+.dashboard-new-project { display: block; padding: 7px 10px; border-radius: 6px; border: 1px solid var(--coskill-border); color: var(--coskill-accent); font-size: 13px; text-align: center; text-decoration: none; }
+.dashboard-new-project:hover { background: #21262d; }
+.dashboard-project-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 7px 10px; border-radius: 6px; color: var(--coskill-text); font-size: 13px; text-decoration: none; }
+.dashboard-project-link > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.dashboard-project-link:hover, .dashboard-project-link.active { background: #21262d; }.dashboard-project-link.active { color: #fff; font-weight: 600; }
+.dashboard-status-badge { flex-shrink: 0; padding: 1px 5px; border: 1px solid #30363d; border-radius: 2em; color: #8b949e; font-size: 10px; font-style: normal; text-transform: capitalize; }.dashboard-status-badge.active { border-color: rgba(46,160,67,.4); color: #3fb950; }.dashboard-status-badge.completed { border-color: rgba(56,139,253,.4); color: #58a6ff; }.dashboard-status-badge.paused { border-color: rgba(187,128,9,.4); color: #d29922; }
+.dashboard-empty-projects { padding: 7px 10px; color: var(--coskill-muted); font-size: 12px; }
+.dashboard-content { min-width: 0; }
+.dashboard-content > .github-dashboard { min-height: auto !important; padding: 0 !important; }
+.dashboard-side-card { margin-bottom: 16px; padding: 16px; border: 1px solid var(--coskill-border); border-radius: 6px; background: var(--coskill-panel); }
+.dashboard-side-card h2 { margin: 0 0 8px; color: var(--coskill-text); font-size: 14px; font-weight: 600; }
+.dashboard-side-card p, .dashboard-side-card dl { margin: 0; color: var(--coskill-muted); font-size: 12px; }
+.dashboard-side-card dl { display: grid; gap: 12px; }.dashboard-side-card dt { margin-bottom: 2px; }.dashboard-side-card dd { margin: 0; color: var(--coskill-text); line-height: 1.45; }
+
+@media (max-width: 1100px) { .dashboard-shell { grid-template-columns: 190px minmax(0, 1fr); }.dashboard-right-panel { display: none; } }
+@media (max-width: 800px) { .dashboard-shell { display: block; padding: 72px 16px 16px; }.dashboard-left-panel { display: none; }.dashboard-content > .github-dashboard { padding: 0 !important; } }
+
+/* ── Dashboard assistant ───────────────────────────────── */
+.dashboard-assistant { margin-bottom: 28px; overflow: hidden; border: 1px solid #30363d; border-radius: 6px; background: #161b22; }.dashboard-assistant-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid #30363d; }.dashboard-assistant-header > div { display: flex; align-items: center; gap: 8px; }.dashboard-assistant-header h2 { margin: 0; color: #e6edf3; font-size: 14px; font-weight: 600; }.dashboard-assistant-header > span { color: #8b949e; font-size: 11px; }.assistant-online-dot { width: 7px; height: 7px; border-radius: 50%; background: #3fb950; box-shadow: 0 0 0 0 rgba(63,185,80,.45); animation: assistant-online-pulse 1.8s ease-out infinite; }.assistant-online-label { color: #3fb950; font-size: 11px; }
+.assistant-prompts { display: flex; flex-wrap: wrap; gap: 7px; padding: 12px 16px; border-bottom: 1px solid #30363d; }.assistant-prompts button { padding: 5px 9px; border: 1px solid #30363d; border-radius: 999px; background: transparent; color: #e6edf3; font: inherit; font-size: 12px; cursor: pointer; transition: background .15s, border-color .15s; }.assistant-prompts button:hover:not(:disabled) { border-color: #2f81f7; background: rgba(47,129,247,.12); }.assistant-prompts button:disabled { cursor: wait; opacity: .55; }
+.assistant-messages { display: grid; gap: 10px; max-height: 400px; overflow-y: auto; padding: 16px; background: #161b22; scrollbar-color: #30363d transparent; scrollbar-width: thin; }.assistant-messages::-webkit-scrollbar { width: 8px; }.assistant-messages::-webkit-scrollbar-thumb { border: 2px solid #161b22; border-radius: 99px; background: #30363d; }.assistant-messages::-webkit-scrollbar-track { background: transparent; }.assistant-message { display: flex; align-items: flex-start; gap: 7px; max-width: 82%; padding: 10px 11px; border-radius: 6px; background: #21262d; animation: assistant-message-in .2s ease-out both; }.assistant-message.user { justify-self: end; background: #2f81f7; }.assistant-message p { margin: 0; color: #e6edf3; font-size: 13px; line-height: 1.5; white-space: pre-wrap; }.assistant-robot { display: grid; flex: 0 0 auto; place-items: center; width: 18px; height: 18px; margin-top: 1px; color: #8b949e; }.assistant-typing { color: #8b949e !important; }
+.assistant-form { display: flex; gap: 8px; padding: 12px 16px 16px; border-top: 1px solid #30363d; }.assistant-form input { flex: 1; min-width: 0; padding: 9px 10px; border: 1px solid #30363d; border-radius: 6px; outline: none; background: #0d1117; color: #e6edf3; font: inherit; font-size: 13px; }.assistant-form input:focus { border-color: #2f81f7; box-shadow: 0 0 0 3px rgba(47,129,247,.18); }.assistant-form input::placeholder { color: #8b949e; }.assistant-form button { display: grid; place-items: center; width: 36px; border: 1px solid rgba(240,246,252,.14); border-radius: 6px; background: #2f81f7; color: #fff; cursor: pointer; }.assistant-form button:hover:not(:disabled) { background: #58a6ff; }.assistant-form button:disabled { opacity: .5; cursor: not-allowed; }
+@keyframes assistant-online-pulse { 0% { box-shadow: 0 0 0 0 rgba(63,185,80,.45); } 70% { box-shadow: 0 0 0 6px rgba(63,185,80,0); } 100% { box-shadow: 0 0 0 0 rgba(63,185,80,0); } } @keyframes assistant-message-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 @keyframes spin {
   to { transform: rotate(360deg); }

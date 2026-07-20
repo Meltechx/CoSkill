@@ -2,8 +2,11 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.security import HTTPAuthorizationCredentials
 
 from database import get_authenticated_client, supabase_admin
-from dependencies import bearer_scheme, get_current_user, get_gamification_service
-from models.user import GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, TeamProfileOut, TeamProfileUpdate, UsernameAvailabilityOut, UserSearchOut, UserXpOut
+from dependencies import bearer_scheme, get_ai_service, get_current_user, get_gamification_service, get_project_service, get_task_service
+from models.user import DashboardAssistantOut, DashboardAssistantRequest, GamificationProfileOut, LeaderboardEntryOut, PublicProfileOut, TeamProfileOut, TeamProfileUpdate, UsernameAvailabilityOut, UserSearchOut, UserXpOut
+from services.ai_service import AIService
+from services.project_service import ProjectService
+from services.task_service import TaskService
 from services.gamification_service import GamificationService
 from services.user_service import UserService
 
@@ -61,6 +64,26 @@ async def get_my_gamification_profile(
         current_user.email,
         metadata.get("full_name"),
     )
+
+
+@router.post("/me/assistant", response_model=DashboardAssistantOut)
+async def dashboard_assistant(
+    body: DashboardAssistantRequest,
+    current_user=Depends(get_current_user),
+    project_service: ProjectService = Depends(get_project_service),
+    task_service: TaskService = Depends(get_task_service),
+    ai_service: AIService = Depends(get_ai_service),
+):
+    message = body.message.strip()
+    if not message:
+        from fastapi import HTTPException, status
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A message is required.")
+    user_id = str(current_user.id)
+    projects = await project_service.list_projects(user_id)
+    tasks = []
+    for project in projects:
+        tasks.extend(await task_service.list_tasks(project["id"], user_id))
+    return {"reply": await ai_service.chat_about_dashboard(projects, tasks, message)}
 
 
 @router.get("/leaderboard", response_model=list[LeaderboardEntryOut])

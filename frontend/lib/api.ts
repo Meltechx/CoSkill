@@ -376,6 +376,9 @@ export const users = {
   checkUsername: (username: string) =>
     api<{ available: boolean }>(`/api/users/check-username?username=${encodeURIComponent(username)}`),
 
+  dashboardAssistant: (message: string, token: string) =>
+    api<{ reply: string }>("/api/users/me/assistant", { method: "POST", body: { message }, token }),
+
   teamProfile: (token: string) =>
     api<TeamProfile>("/api/users/me/team-profile", { token }),
 

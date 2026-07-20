@@ -73,6 +73,13 @@ TEAM_MATCHING_SYSTEM_PROMPT = (
     "Return up to 10 matches, sorted by compatibility descending. Only include candidates with compatibility >= 20."
 )
 
+DASHBOARD_ASSISTANT_SYSTEM_PROMPT = (
+    "You are CoSkill's concise, practical AI work assistant. Use only the supplied dashboard context to answer "
+    "questions about what the user should work on, their progress, or their next task. Prefer a concrete next action, "
+    "mention a task or project by name when available, and do not claim that work is complete unless the context says so. "
+    "Keep responses under 180 words and use short bullets when that improves scanability."
+)
+
 
 class AIService:
     def __init__(self):
@@ -345,6 +352,40 @@ class AIService:
         reply = response.choices[0].message.content
         if not reply:
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="OpenAI returned an empty task-chat response.")
+        return reply.strip()
+
+    async def chat_about_dashboard(self, projects: list[dict], tasks: list[dict], message: str) -> str:
+        completed_tasks = sum(task.get("status") == "completed" for task in tasks)
+        in_progress = [task for task in tasks if task.get("status") == "in_progress"]
+        open_tasks = [task for task in tasks if task.get("status") in {"todo", "in_progress"}]
+        project_lines = "\n".join(
+            f"- {project.get('title', 'Untitled project')} ({project.get('status', 'active')})"
+            for project in projects[:20]
+        ) or "- No projects yet"
+        task_lines = "\n".join(
+            f"- [{task.get('status', 'todo')}] {task.get('title', 'Untitled task')} "
+            f"(project: {next((project.get('title') for project in projects if project.get('id') == task.get('project_id')), 'unknown')}; "
+            f"difficulty: {task.get('difficulty', 'medium')}; estimate: {task.get('estimated_hours') or 'unspecified'}h)"
+            for task in (in_progress + [task for task in open_tasks if task.get('status') != 'in_progress'])[:30]
+        ) or "- No incomplete tasks yet"
+        context = (
+            f"Dashboard summary: {len(projects)} projects, {len(tasks)} total tasks, {completed_tasks} completed, "
+            f"{len(in_progress)} in progress, {len(open_tasks)} incomplete.\n\nProjects:\n{project_lines}\n\n"
+            f"Prioritized incomplete tasks:\n{task_lines}"
+        )
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-5.6",
+                messages=[
+                    {"role": "system", "content": DASHBOARD_ASSISTANT_SYSTEM_PROMPT},
+                    {"role": "user", "content": f"{context}\n\nUser question: {message}"},
+                ],
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=f"OpenAI API error: {str(exc)}")
+        reply = response.choices[0].message.content
+        if not reply:
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="OpenAI returned an empty dashboard-assistant response.")
         return reply.strip()
 
     async def evaluate_verification_answer(

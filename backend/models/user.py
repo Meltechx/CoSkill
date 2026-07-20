@@ -153,3 +153,11 @@ class TeamMatchOut(BaseModel):
 
 class UsernameAvailabilityOut(BaseModel):
     available: bool
+
+
+class DashboardAssistantRequest(BaseModel):
+    message: str
+
+
+class DashboardAssistantOut(BaseModel):
+    reply: str

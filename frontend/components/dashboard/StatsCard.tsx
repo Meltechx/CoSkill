@@ -4,42 +4,38 @@ interface StatsCardProps {
   change?: string;
   trend?: "up" | "down" | "neutral";
   icon: React.ReactNode;
-  gradient: string;
 }
 
-export default function StatsCard({ label, value, change, trend, icon, gradient }: StatsCardProps) {
+export default function StatsCard({ label, value, change, trend, icon }: StatsCardProps) {
   return (
     <div
       style={{
-        background: "rgba(255,255,255,0.03)",
-        border: "1px solid rgba(255,255,255,0.07)",
-        borderRadius: "14px",
-        padding: "20px",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        transition: "border-color 0.2s, transform 0.2s",
+        background: "#161b22",
+        border: "1px solid #30363d",
+        borderRadius: "6px",
+        padding: "16px",
+        transition: "border-color 0.15s ease",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(168,85,247,0.2)";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-1px)";
+        (e.currentTarget as HTMLDivElement).style.borderColor = "#8b949e";
       }}
       onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
+        (e.currentTarget as HTMLDivElement).style.borderColor = "#30363d";
       }}
     >
       {/* Icon */}
       <div
         style={{
-          width: "38px",
-          height: "38px",
-          borderRadius: "10px",
-          background: gradient,
+          width: "32px",
+          height: "32px",
+          borderRadius: "6px",
+          background: "#21262d",
+          border: "1px solid #30363d",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          marginBottom: "14px",
-          color: "white",
+          marginBottom: "12px",
+          color: "#8b949e",
         }}
       >
         {icon}
@@ -47,7 +43,7 @@ export default function StatsCard({ label, value, change, trend, icon, gradient 
 
       {/* Value */}
       <div style={{ display: "flex", alignItems: "flex-end", gap: "8px", marginBottom: "4px" }}>
-        <span style={{ fontSize: "26px", fontWeight: 700, color: "white", letterSpacing: "-0.04em", lineHeight: 1 }}>
+        <span style={{ fontSize: "24px", fontWeight: 600, color: "#e6edf3", letterSpacing: "-0.02em", lineHeight: 1 }}>
           {value}
         </span>
         {change && (
@@ -57,9 +53,9 @@ export default function StatsCard({ label, value, change, trend, icon, gradient 
               fontWeight: 600,
               marginBottom: "2px",
               color:
-                trend === "up" ? "#4ade80"
-                : trend === "down" ? "#f87171"
-                : "rgba(255,255,255,0.4)",
+                trend === "up" ? "#3fb950"
+                : trend === "down" ? "#f85149"
+                : "#8b949e",
             }}
           >
             {trend === "up" ? "↑" : trend === "down" ? "↓" : ""} {change}
@@ -68,7 +64,7 @@ export default function StatsCard({ label, value, change, trend, icon, gradient 
       </div>
 
       {/* Label */}
-      <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.38)", fontWeight: 500 }}>
+      <p style={{ fontSize: "12px", color: "#8b949e", fontWeight: 400 }}>
         {label}
       </p>
     </div>
