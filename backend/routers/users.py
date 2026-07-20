@@ -40,6 +40,16 @@ async def update_my_team_profile(
     return await user_service.update_team_profile(str(current_user.id), body.model_dump(exclude_unset=True))
 
 
+@router.put("/me/profile", response_model=TeamProfileOut)
+async def update_my_profile(
+    body: TeamProfileUpdate,
+    current_user=Depends(get_current_user),
+    user_service: UserService = Depends(get_public_user_service),
+):
+    """Update profile fields outside the team-profile settings surface."""
+    return await user_service.update_team_profile(str(current_user.id), body.model_dump(exclude_unset=True))
+
+
 @router.get("/me/xp", response_model=UserXpOut)
 async def get_my_xp(
     current_user=Depends(get_current_user),

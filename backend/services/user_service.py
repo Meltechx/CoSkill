@@ -124,7 +124,7 @@ class UserService:
         username = self._normalize_username(username)
         user_response = (
             self.client.table("users")
-            .select("id, full_name, username, avatar_url, bio, team_role, experience_level, skills, is_available")
+            .select("id, full_name, username, avatar_url, bio, team_role, experience_level, skills, github_url, is_available")
             .eq("username", username)
             .limit(1)
             .execute()
@@ -184,6 +184,7 @@ class UserService:
             "team_role": u.get("team_role") or "other",
             "experience_level": u.get("experience_level") or "mid",
             "skills": u.get("skills") or [],
+            "github_url": u.get("github_url"),
             "skill_profiles": [
                 {
                     "skill": row["skill_name"],

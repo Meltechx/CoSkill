@@ -99,6 +99,7 @@ class PublicProfileOut(BaseModel):
     team_role: str = "other"
     experience_level: str = "mid"
     skills: list[str] = []
+    github_url: Optional[str] = None
     skill_profiles: list[SkillScore]
     overall_score: float
     total_tasks: int

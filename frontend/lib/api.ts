@@ -305,6 +305,7 @@ export interface PublicProfile {
   team_role: string;
   experience_level: string;
   skills: string[];
+  github_url: string | null;
   skill_profiles: SkillScore[];
   overall_score: number;
   total_tasks: number;
@@ -384,6 +385,9 @@ export const users = {
 
   updateTeamProfile: (data: TeamProfileUpdate, token: string) =>
     api<TeamProfile>("/api/users/me/team-profile", { method: "PUT", body: data, token }),
+
+  updateProfile: (data: Pick<TeamProfileUpdate, "github_url">, token: string) =>
+    api<TeamProfile>("/api/users/me/profile", { method: "PUT", body: data, token }),
 
   xp: (token: string) =>
     api<XpStatus>("/api/users/me/xp", { token }),

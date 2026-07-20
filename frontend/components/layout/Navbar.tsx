@@ -62,7 +62,9 @@ export default function Navbar() {
           {accountOpen && <div role="menu" className="account-menu">
             <div className="account-menu-user"><strong>{user?.full_name || "CoSkill member"}</strong><span>{user?.email}</span></div>
             <div className="menu-divider" />
-            <MenuLinks onNavigate={() => setAccountOpen(false)} />
+            <Link href="/dashboard/profile" onClick={() => setAccountOpen(false)} className="nav-menu-link">View Profile</Link>
+            <Link href="/dashboard/projects" onClick={() => setAccountOpen(false)} className="nav-menu-link">Projects</Link>
+            <button type="button" className="nav-menu-link" onClick={() => { setAccountOpen(false); router.push("/dashboard/profile"); }}>Settings</button>
             <div className="menu-divider" />
             <button type="button" className="nav-menu-link signout" onClick={signOut}>Sign out</button>
           </div>}

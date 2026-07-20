@@ -19,6 +19,7 @@ import {
   TeamProfile,
   TeamProfileUpdate,
 } from "@/lib/api";
+import { GitHubRepos } from "@/components/profile/GitHubRepos";
 
 /* ── Constants ────────────────────────────────────────────────────────── */
 
@@ -338,6 +339,9 @@ export default function ProfilePage() {
   const [teamSaving, setTeamSaving] = useState(false);
   const [teamMsg, setTeamMsg] = useState("");
   const [teamForm, setTeamForm] = useState<TeamProfileUpdate>({});
+  const [githubUsername, setGithubUsername] = useState("");
+  const [githubSaving, setGithubSaving] = useState(false);
+  const [githubMsg, setGithubMsg] = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -354,6 +358,7 @@ export default function ProfilePage() {
     users.teamProfile(token)
       .then((tp) => {
         setTeamProfile(tp);
+        setGithubUsername((tp.github_url || "").replace(/^https?:\/\/(?:www\.)?github\.com\//i, "").replace(/\/.*/, ""));
         setTeamForm({
           bio: tp.bio || "",
           skills: tp.skills,
@@ -385,6 +390,28 @@ export default function ProfilePage() {
       setTeamMsg(err instanceof Error ? err.message : "Save failed");
     } finally {
       setTeamSaving(false);
+    }
+  };
+
+  const handleGitHubSave = async () => {
+    if (!token) return;
+    const username = githubUsername.trim().replace(/^@/, "").replace(/^https?:\/\/(?:www\.)?github\.com\//i, "").replace(/\/.*/, "");
+    if (username && !/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(username)) {
+      setGithubMsg("Enter a valid GitHub username.");
+      return;
+    }
+    setGithubSaving(true);
+    setGithubMsg("");
+    try {
+      const updated = await users.updateProfile({ github_url: username ? `https://github.com/${username}` : "" }, token);
+      setTeamProfile(updated);
+      setGithubUsername(username);
+      setTeamForm((current) => ({ ...current, github_url: updated.github_url || "" }));
+      setGithubMsg(username ? "GitHub connected!" : "GitHub disconnected.");
+    } catch (err) {
+      setGithubMsg(err instanceof Error ? err.message : "GitHub could not be saved.");
+    } finally {
+      setGithubSaving(false);
     }
   };
 
@@ -744,6 +771,22 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* ── GitHub ───────────────────────────────────────────── */}
+        <section style={{ padding: "24px", marginBottom: "20px", borderRadius: "18px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18 }}>
+            <div>
+              <p style={{ margin: "0 0 4px", color: "#58a6ff", fontSize: 11, fontWeight: 800, letterSpacing: ".1em", textTransform: "uppercase" }}>GitHub</p>
+              <h2 style={{ margin: 0, fontSize: 17 }}>Connect GitHub</h2>
+            </div>
+            {githubMsg && <span style={{ color: githubMsg.includes("!") || githubMsg.includes("disconnected") ? "#4ade80" : "#f87171", fontSize: 12, fontWeight: 600 }}>{githubMsg}</span>}
+          </div>
+          <div style={{ display: "flex", gap: 10, marginBottom: teamProfile?.github_url ? 22 : 0 }}>
+            <input aria-label="GitHub username" value={githubUsername} onChange={(event) => setGithubUsername(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void handleGitHubSave(); }} placeholder="octocat" style={{ minWidth: 0, flex: 1, padding: "10px 14px", borderRadius: 10, border: "1px solid #30363d", background: "#161b22", color: "#e6edf3", fontSize: 13, outline: "none" }} />
+            <button type="button" onClick={handleGitHubSave} disabled={githubSaving} style={{ padding: "10px 16px", border: 0, borderRadius: 10, background: "#238636", color: "white", fontSize: 13, fontWeight: 700, cursor: githubSaving ? "wait" : "pointer" }}>{githubSaving ? "Saving..." : "Save"}</button>
+          </div>
+          <GitHubRepos githubUrl={teamProfile?.github_url} />
+        </section>
+
         {/* ── Skill breakdown ───────────────────────────────────── */}
         <div style={{
           background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
@@ -938,18 +981,6 @@ export default function ProfilePage() {
                 value={(teamForm.technologies || []).join(", ")}
                 onChange={(e) => handleTagInput("technologies", e.target.value)}
                 placeholder="Docker, AWS, PostgreSQL..."
-                style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-              />
-            </div>
-
-            {/* GitHub */}
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>GitHub URL</label>
-              <input
-                type="url"
-                value={teamForm.github_url || ""}
-                onChange={(e) => updateTeamField("github_url", e.target.value)}
-                placeholder="https://github.com/username"
                 style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "white", fontSize: 13, outline: "none", boxSizing: "border-box" }}
               />
             </div>

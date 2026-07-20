@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PublicProfile, SkillScore, users } from "@/lib/api";
+import { GitHubRepos } from "@/components/profile/GitHubRepos";
 
 const PALETTES = [
   "linear-gradient(90deg, #a855f7, #6366f1)",
@@ -148,6 +149,8 @@ export default function PublicProfilePage() {
           ))}
         </section>
       )}
+
+      <GitHubRepos githubUrl={profile.github_url} />
 
       {/* Stats grid */}
       <section className="public-profile-summary" style={{ display: "grid", gridTemplateColumns: "minmax(220px, 0.8fr) minmax(250px, 1fr)", gap: 20, marginBottom: 20 }}>
