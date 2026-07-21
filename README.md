@@ -1,12 +1,41 @@
-# CoSkill
+# CoSkill — AI-Powered Work Performance Platform
 
-AI-powered work performance tracking and talent discovery platform.
+> **Traditional CVs are just claims. CoSkill turns your work into verified proof.**
+
+## Live Demo
+
+| Service | URL |
+|---|---|
+| Frontend | https://coskill-nu.vercel.app |
+| Backend API | https://coskill.onrender.com/docs |
+
+## What is CoSkill?
+
+CoSkill is an AI-powered platform that tracks real work output, scores performance objectively, and generates a verifiable skill profile — replacing static CVs with dynamic, evidence-backed proof of competence.
+
+## Features
+
+- **AI Task Decomposition** — Breaks projects into structured subtasks using GPT-5.6
+- **Performance Scoring & Analytics** — Objective scoring with trend tracking and insights
+- **Manipulation Detection & Verification** — Detects inflated self-reports and validates work authenticity
+- **AI Sprint Planner** — Automatically plans and prioritizes work sprints
+- **AI Team Matching** — Matches collaborators based on verified skill profiles
+- **XP & Level System** — Gamified progression tied to real output
+- **Judge Mode** — Demo presentation mode for live hackathon judging
+- **PDF CV Export** — Generate a verified, exportable CV from your profile
+- **Hackathon Discovery** — Browse and join hackathons from within the platform
+- **Public Profile & Skill Radar** — Shareable profile with a visual skill radar chart
 
 ## Tech Stack
 
-- **Backend**: FastAPI (Python) + Supabase
-- **Frontend**: Next.js 14 + Tailwind CSS
-- **AI**: OpenAI API
+| Layer | Technology | Hosting |
+|---|---|---|
+| Frontend | Next.js + Tailwind CSS | Vercel |
+| Backend | FastAPI (Python) | Render |
+| Database | Supabase (PostgreSQL) | Supabase |
+| AI | GPT-5.6 (OpenAI) | OpenAI |
+
+Built with **OpenAI Codex**.
 
 ## Project Structure
 
@@ -22,14 +51,14 @@ CoSkill/
 └── frontend/
     ├── app/            # Next.js App Router pages
     │   ├── (auth)/     # Login & Register pages
-    │   └── dashboard/  # Dashboard page
+    │   └── dashboard/  # Dashboard & feature pages
     └── components/     # Reusable UI components
         ├── ui/         # Button, Input, Card
         ├── layout/     # Navbar, Sidebar
-        └── dashboard/  # StatsCard
+        └── dashboard/  # StatsCard, SkillRadar, Leaderboard
 ```
 
-## Getting Started
+## Setup
 
 ### Backend
 
@@ -81,3 +110,11 @@ App at `http://localhost:3000`.
 | GET | `/api/performance/leaderboard` | Team leaderboard |
 | GET | `/api/performance/insights` | AI-generated insights |
 | POST | `/api/projects/{id}/decompose` | AI task decomposition |
+
+## Codex Session ID
+
+[session id here]
+
+## License
+
+See [LICENSE](./LICENSE).
